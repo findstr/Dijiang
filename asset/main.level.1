@@ -1,0 +1,692 @@
+---
+root:
+    -gameobject:
+        id: 1
+        name: Player
+        components:
+                -transform:
+                    position:
+                        x: 0
+                        y: 0
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/character/player/components/animation/data/robot.mesh_bind.json
+                        material: asset/objects/character/player/components/mesh/robot.material.json
+    -gameobject:
+        id: 2
+        name: Wall_1
+        components:
+                -transform:
+                    position:
+                        x: 1.94597
+                        y: -0.38554
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999993
+                        y: 0.999993
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 3
+        name: Wall_2
+        components:
+                -transform:
+                    position:
+                        x: -7.9951
+                        y: -0.38554
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999918
+                        y: 0.999918
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 4
+        name: Wall_3
+        components:
+                -transform:
+                    position:
+                        x: -14.2042
+                        y: -0.38554
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999902
+                        y: 0.999902
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 5
+        name: Wall_4
+        components:
+                -transform:
+                    position:
+                        x: -23.9528
+                        y: 8.1511
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999856
+                        y: 0.999856
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 6
+        name: Wall_5
+        components:
+                -transform:
+                    position:
+                        x: -31.1963
+                        y: 8.1511
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999829
+                        y: 0.999829
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 7
+        name: Wall_6
+        components:
+                -transform:
+                    position:
+                        x: -31.1344
+                        y: -6.53789
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999829
+                        y: 0.839828
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 8
+        name: Wall_7
+        components:
+                -transform:
+                    position:
+                        x: -0.294272
+                        y: -16.3531
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999829
+                        y: 0.999829
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 9
+        name: Wall_8
+        components:
+                -transform:
+                    position:
+                        x: 6.32963
+                        y: -16.3531
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999829
+                        y: 0.999829
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 10
+        name: Wall_9
+        components:
+                -transform:
+                    position:
+                        x: 28.1092
+                        y: -9.2787
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999829
+                        y: 0.999829
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 11
+        name: Wall_10
+        components:
+                -transform:
+                    position:
+                        x: 27.5417
+                        y: -1.22435
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999829
+                        y: 0.999829
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 12
+        name: Wall_11
+        components:
+                -transform:
+                    position:
+                        x: 24.1145
+                        y: 11.7602
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999829
+                        y: 0.999829
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 13
+        name: Wall_12
+        components:
+                -transform:
+                    position:
+                        x: 16.9293
+                        y: 11.7602
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999829
+                        y: 0.999829
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 14
+        name: Wall_13
+        components:
+                -transform:
+                    position:
+                        x: -4.55501
+                        y: 15.5394
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 0.999829
+                        y: 0.879828
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 15
+        name: Wall_14
+        components:
+                -transform:
+                    position:
+                        x: -0.227576
+                        y: 20.4413
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 16
+        name: Wall_15
+        components:
+                -transform:
+                    position:
+                        x: -23.9121
+                        y: 13.0192
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 17
+        name: Wall_16
+        components:
+                -transform:
+                    position:
+                        x: -26.9155
+                        y: -11.4134
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 18
+        name: Wall_17
+        components:
+                -transform:
+                    position:
+                        x: 23.1772
+                        y: -13.4053
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 0.86
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 19
+        name: WallWithDoor_1
+        components:
+                -transform:
+                    position:
+                        x: -19.0837
+                        y: 3.74536
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 0.86
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall_with_door.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 20
+        name: WallWithDoor_2
+        components:
+                -transform:
+                    position:
+                        x: -23.8943
+                        y: 19.4922
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 0.86
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall_with_door.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 21
+        name: WallWithDoor_3
+        components:
+                -transform:
+                    position:
+                        x: -8.84542
+                        y: 19.4922
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 0.86
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall_with_door.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 22
+        name: WallWithDoor_4
+        components:
+                -transform:
+                    position:
+                        x: 20.2928
+                        y: 15.6586
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 0.86
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall_with_door.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 23
+        name: WallWithDoor_5
+        components:
+                -transform:
+                    position:
+                        x: 36.2481
+                        y: 7.65696
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: -0.707683
+                        w: 0.70653
+                    scale:
+                        x: 1
+                        y: 0.86
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall_with_door.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 24
+        name: WallWithWindow_1
+        components:
+                -transform:
+                    position:
+                        x: -26.9268
+                        y: -19.3617
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall_with_window.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 25
+        name: WallWithWindow_2
+        components:
+                -transform:
+                    position:
+                        x: 32.3802
+                        y: 3.21519
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall_with_window.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 26
+        name: WallBlock_1
+        components:
+                -transform:
+                    position:
+                        x: 5.70719
+                        y: 13.5344
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall_block.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 27
+        name: WallBlock_2
+        components:
+                -transform:
+                    position:
+                        x: 3.87136
+                        y: -1.51802
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/wall/mesh/wall_block.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 28
+        name: Stairs
+        components:
+                -transform:
+                    position:
+                        x: 5.87136
+                        y: -1.51802
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 1
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/stairs/mesh/stairs.obj
+                        material: asset/objects/environment/_material/gold.material.json
+    -gameobject:
+        id: 29
+        name: Ground
+        components:
+                -transform:
+                    position:
+                        x: 0
+                        y: 0
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 0
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/floor/mesh/floor.obj
+                        material: asset/objects/environment/_material/white.material.json
+    -gameobject:
+        id: 30
+        name: Fence
+        components:
+                -transform:
+                    position:
+                        x: 0
+                        y: 0
+                        z: 0
+                    rotation:
+                        x: 0
+                        y: 0
+                        z: 0
+                        w: 0
+                    scale:
+                        x: 1
+                        y: 1
+                        z: 1
+                        w: 1
+                -meshfilter:
+                    -submesh:
+                        mesh: asset/objects/environment/fence/mesh/fence.obj
+                        material: asset/objects/environment/_material/silver.material.json

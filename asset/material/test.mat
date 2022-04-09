@@ -1,0 +1,7 @@
+render_queue : geometry
+shader_file: ../asset/shaders_output/shader
+shader_params:
+    -
+        name: tex
+        type: texture2d
+        file: ../asset/textures/viking_room.png
