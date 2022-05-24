@@ -19,6 +19,7 @@ public:
 	void add_gameobject(gameobject *go);
 public:
 	static void load(const std::string &path);
+	static void tick_all(float delta);
 	static void cull(camera *cam, std::vector<draw_object> &list);
 private:
 	static std::vector<std::unique_ptr<level>> levels;

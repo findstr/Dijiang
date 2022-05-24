@@ -34,6 +34,7 @@ run()
 	auto cameras = camera::all_cameras();
 	bool running = true;
 	while (running) {
+		level::tick_all(0.1f);
 		for (auto cam:cameras) {
 			E.drawlist.clear();
 			level::cull(cam, E.drawlist);

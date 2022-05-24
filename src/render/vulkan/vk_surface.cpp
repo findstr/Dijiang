@@ -10,6 +10,8 @@ struct surface {
 	GLFWwindow *window = nullptr;
 };
 
+struct surface *SF = nullptr;
+
 std::vector<const char *>
 surface_required_extensions(surface *s)
 {
@@ -44,6 +46,7 @@ surface_new(const char *name, int width, int height)
 	glfwSetWindowUserPointer(s->window, s);
 	glfwSetFramebufferSizeCallback(s->window, window_resized);
 	printf("surface_new:%p\n", s->window);
+	SF = s;
 	return s;
 }
 
@@ -74,6 +77,31 @@ surface_poll(struct surface *s)
 	}
 	glfwPollEvents();
 	return 0;
+}
+
+bool
+surface_key_down(key k)
+{
+	auto *s = SF;
+	int state;
+	switch (k) {
+	case key::A:
+		state = glfwGetKey(s->window, GLFW_KEY_A);
+		break;
+	case key::S:
+		state = glfwGetKey(s->window, GLFW_KEY_S);
+		break;
+	case key::D:
+		state = glfwGetKey(s->window, GLFW_KEY_D);
+		break;
+	case key::W:
+		state = glfwGetKey(s->window, GLFW_KEY_W);
+		break;
+	default:
+		assert(!"unsupport key code");
+		break;
+	}
+	return state == GLFW_PRESS;
 }
 
 }}

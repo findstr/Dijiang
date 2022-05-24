@@ -21,6 +21,8 @@ root:
                         aspect: 1.8
                         clip_near_plane: 1.0
                         clip_far_plane: 100.0
+                - camcontrol:
+                        speed: 1.0
 
     - gameobject:
         name: Player

@@ -14,6 +14,7 @@
 #include "framework/components/meshfilter.h"
 #include "framework/components/meshrender.h"
 #include "framework/components/camera.h"
+#include "framework/components/camcontrol.h"
 #include "resource.h"
 
 
@@ -220,6 +221,9 @@ load_level(const std::string &file, std::function<void(gameobject *)> add_go)
 					auto cam = new camera(go);
 					go->add_component(cam);
 					parse_camera(cam, it->second);
+				} else if (type == "camcontrol") {
+					auto cc = new camcontrol(go);
+					go->add_component(cc);
 				}
 			}
 		}

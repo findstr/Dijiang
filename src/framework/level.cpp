@@ -58,5 +58,12 @@ level::cull(camera *cam, std::vector<draw_object> &list)
 	}
 }
 
+void
+level::tick_all(float delta)
+{
+	for (auto &lv:levels)
+		lv->tick(delta);
+}
+
 }
 

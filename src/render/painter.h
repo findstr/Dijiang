@@ -17,9 +17,9 @@ public:
 	void init();
 	void cleanup();
 	bool draw(camera *cam, const std::vector<draw_object> &drawlist);
+	vulkan::surface *surface = nullptr;
 private:
 	std::unique_ptr<vulkan::renderctx> ctx;
-	vulkan::surface *surface = nullptr;
 	vulkan::forward *forward = nullptr;
 };
 
