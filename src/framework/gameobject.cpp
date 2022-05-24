@@ -1,33 +1,42 @@
+#include "components/component.h"
 #include "gameobject.h"
 namespace engine {
 
 gameobject::~gameobject()
 {
+	for (auto c:components)
+		delete c;
+	components.clear();
 
 }
 
-template<derived<component> T> void
-gameobject::add_component()
+void
+gameobject::add_component(component *c)
 {
-
+	components.emplace_back(c);
 }
 
-template<derived<component> T> T *
+component *
 gameobject::get_component(const std::string &type)
 {
-
+	for (auto c:components) {
+		if (c->type() == type)
+			return c;
+	}
+	return nullptr;
 }
 
 void
 gameobject::remove_component(const std::string &type)
 {
-
+	std::erase_if(components, [&type](component *c) {return c->type() == type;});
 }
 
 void
 gameobject::tick(float delta)
 {
-
+	for (auto c:components)
+		c->tick(delta);
 }
 
 }

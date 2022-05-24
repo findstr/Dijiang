@@ -11,8 +11,10 @@
 #include "yaml-cpp/yaml.h"
 #include "utils/file.h"
 #include "stb_image.h"
+#include "framework/components/meshfilter.h"
+#include "framework/components/meshrender.h"
+#include "framework/components/camera.h"
 #include "resource.h"
-#include "render/vulkan/vk_pass.h"
 
 
 namespace engine {
@@ -37,8 +39,10 @@ load_texture(const std::string &file)
 	std::vector<uint8_t> pixels_data;
 	stbi_uc* pixels = stbi_load(file.c_str(),
 		&width, &height, &channels, STBI_rgb_alpha);
-	if (pixels == nullptr)
+	if (pixels == nullptr) {
+		fprintf(stderr, "[resource] load texture:%s fail\n", file.c_str());
 		return nullptr;
+	}
 	size_t image_size = width * height * 4;
 	int max_length = std::max(width, height);
 	auto miplevels = (uint32_t)(std::floor(std::log2(max_length))) + 1;
@@ -138,6 +142,91 @@ load_mesh(const std::string &file)
 	return std::shared_ptr<render::mesh>(mesh);
 }
 
+static void
+parse_transform(transform *tf, YAML::Node n)
+{
+	auto pn = n["position"];
+	auto rn = n["rotation"];
+	auto sn = n["scale"];
+
+	float x = pn["x"].as<float>();
+	float y = pn["y"].as<float>();
+	float z = pn["z"].as<float>();
+	tf->position = vector3f(x, y, z);
+
+	x = rn["x"].as<float>();
+	y = rn["y"].as<float>();
+	z = rn["z"].as<float>();
+	tf->rotation = quaternion::euler(x, y, z);
+
+	x = sn["x"].as<float>();
+	y = sn["y"].as<float>();
+	z = sn["z"].as<float>();
+	tf->scale = vector3f(x, y, z);
+}
+
+static void
+parse_meshfilter(meshfilter *mf, YAML::Node n)
+{
+	auto path = n[0]["submesh"]["mesh"].as<std::string>();
+	auto mesh = load_mesh(path);
+	mf->set_mesh(mesh);
+	std::cout << "meshfilter" << path << std::endl;
+}
+
+static void
+parse_meshrender(meshrender *mr, YAML::Node n)
+{
+	auto path = n["material"].as<std::string>();
+	auto material = load_material(path);
+	mr->set_material(material);
+	std::cout << "meshrender" << path << std::endl;
+}
+
+static void
+parse_camera(camera *cam, YAML::Node n)
+{
+	cam->fov = n["fov"].as<float>();
+	cam->aspect = n["aspect"].as<float>();
+	cam->clip_near_plane = n["clip_near_plane"].as<float>();
+	cam->clip_far_plane = n["clip_far_plane"].as<float>();
+}
+
+void
+load_level(const std::string &file, std::function<void(gameobject *)> add_go)
+{
+	YAML::Node root = YAML::LoadFile(file)["root"];
+	for (int i = 0; i < root.size(); i++) {
+		auto go_node = root[i]["gameobject"];
+		auto name = go_node["name"];
+		auto coms_node = go_node["components"];
+		auto go = new gameobject();
+		add_go(go);
+		for (int j = 0; j < coms_node.size(); j++) {
+			auto com_node = coms_node[j];
+			for (auto it = com_node.begin(); it != com_node.end(); ++it) {
+				auto type = it->first.as<std::string>();
+				if (type == "transform") {
+					parse_transform(&go->transform, it->second);
+				} else if (type == "meshfilter") {
+					auto mf = new meshfilter(go);
+					go->add_component(mf);
+					parse_meshfilter(mf, it->second);
+				} else if (type == "meshrender") {
+					auto mr = new meshrender(go);
+					go->add_component(mr);
+					parse_meshrender(mr, it->second);
+				} else if (type == "camera") {
+					auto cam = new camera(go);
+					go->add_component(cam);
+					parse_camera(cam, it->second);
+				}
+			}
+		}
+	}
+	std::cout << "eof" << std::endl;
+	return ;
+}
 
 }}
 

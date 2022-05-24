@@ -1,6 +1,5 @@
-#include <Eigen/Eigen>
-#include "component.h"
-
+#pragma once
+#include "math/math.h"
 namespace engine {
 
 struct transform {
@@ -8,6 +7,5 @@ struct transform {
 	quaternion rotation;
 	vector3f scale;
 };
-
 
 }

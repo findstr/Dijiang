@@ -28,11 +28,14 @@ include_directories(./deps/)
 
 aux_source_directory(./src/ SOURCES)
 aux_source_directory(./deps/ SOURCES)
+aux_source_directory(./src/math SOURCES)
 aux_source_directory(./src/utils SOURCES)
 aux_source_directory(./src/render SOURCES)
 aux_source_directory(./src/resource SOURCES)
+aux_source_directory(./src/framework SOURCES)
 aux_source_directory(./src/render/rhi SOURCES)
 aux_source_directory(./src/render/vulkan SOURCES)
+aux_source_directory(./src/framework/components SOURCES)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

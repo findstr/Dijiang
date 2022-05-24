@@ -8,6 +8,7 @@
 #include <glm/vec4.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include "conf.h"
 #include "vk_object.h"
@@ -53,10 +54,6 @@ struct forward {
 	VkPipeline pipeline;
 	*/
 	textureEx depthbuffer;
-	std::shared_ptr<render::material> matx;
-	std::shared_ptr<render::mesh> meshx;
-	vk_material *mat;
-	vk_mesh *mesh;
 };
 
 static VkFormat
@@ -265,10 +262,6 @@ forward_new(const renderctx *ctx)
 	};
 	fw->depthbuffer = *texture_new_depth(ctx, ctx->swapchain.extent.width, ctx->swapchain.extent.height, setting);
 	new_framebuffers(ctx, fw);
-	fw->matx = engine::resource::load_material("asset/material/test.mat");
-	fw->meshx = engine::resource::load_mesh("asset/models/viking_room.obj");
-	fw->mat = (vk_material *)fw->matx.get();
-	fw->mesh = (vk_mesh*)fw->meshx.get();
 	for (size_t i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
 		auto &fb = fw->renderframes.emplace_back();
 		new_renderframe(ctx, fw, &fb);
@@ -277,21 +270,39 @@ forward_new(const renderctx *ctx)
 }
 
 static void
-update_uniformbuffer(const renderctx *ctx, vk_buffer *ub) {
+update_uniformbuffer(const renderctx *ctx, vk_buffer *ub, camera *cam,  const draw_object &draw) {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 	render::UniformBufferObject ubo{};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(10.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0, 2.0, 2.0), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), ctx->swapchain.extent.width / (float)ctx->swapchain.extent.height, 0.1f, 10.0f);
+
+	vector3f axis;
+	auto pos = draw.transform.position;
+	auto scale = draw.transform.scale;
+	auto angle = draw.transform.rotation.axis_angle(&axis);
+
+	auto eye = cam->transform->position;
+	auto eye_dir = eye + cam->forward() * 5.0f;
+	auto up = cam->up();
+
+	auto model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(pos.x(), pos.y(), pos.z()));
+	model = glm::rotate(model, glm::radians(angle), glm::vec3(axis.x(), axis.y(), axis.z()));
+	ubo.model = glm::scale(model, glm::vec3(scale.x(), scale.y(), scale.z()));
+	ubo.view = glm::lookAt(
+			glm::vec3(eye.x(), eye.y(), eye.z()),
+			glm::vec3(eye_dir.x(), eye_dir.y(), eye_dir.z()),
+			glm::vec3(up.x(), up.y(), up.z()));
+
+	ubo.proj = glm::perspective(glm::radians(cam->fov), cam->aspect,
+		cam->clip_near_plane, cam->clip_far_plane);
 	ubo.proj[1][1] *= -1;
 	ub->upload(&ubo, sizeof(ubo));
 }
 
 void
-forward_tick(const renderctx *ctx, forward *fw)
+forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &draw)
 {
 	int image_index;
 	auto &rf = fw->renderframes[fw->frameidx];
@@ -299,11 +310,13 @@ forward_tick(const renderctx *ctx, forward *fw)
 		//TODO:recreate swapchain
 		return ;
 	}
+	vk_mesh *mesh = (vk_mesh *)draw.mesh;
+	vk_material *mat = (vk_material *)draw.material;
 	auto &fb = fw->framebuffers[image_index];
-	fw->mesh->flush();
-	auto descset = fw->mat->desc_set[fw->frameidx];
+	mesh->flush();
+	auto descset = mat->desc_set[fw->frameidx];
 
-	update_uniformbuffer(ctx, fw->mat->uniformbuffer.get());
+	update_uniformbuffer(ctx, mat->uniformbuffer.get(), cam, draw);
 
 	std::array<VkClearValue, 2> clearColor{};
 	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
@@ -327,18 +340,18 @@ forward_tick(const renderctx *ctx, forward *fw)
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
 	renderPassInfo.pClearValues = clearColor.data();
 	vkCmdBeginRenderPass(rf.cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-	vkCmdBindPipeline(rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, fw->mat->pipeline->handle);
+	vkCmdBindPipeline(rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline->handle);
 
-	auto vertexBuffer = fw->mesh->vertex->handle;
-	auto indexBuffer = fw->mesh->index->handle;
+	auto vertexBuffer = mesh->vertex->handle;
+	auto indexBuffer = mesh->index->handle;
 
 	VkBuffer vertexBuffers[] = { vertexBuffer };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(rf.cmdbuf, 0, 1, vertexBuffers, offsets);
 	vkCmdBindIndexBuffer(rf.cmdbuf, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindDescriptorSets(rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		fw->mat->pipeline->layout, 0, 1, &descset, 0, nullptr);
-	vkCmdDrawIndexed(rf.cmdbuf, fw->mesh->index_count, 1, 0, 0, 0);
+		mat->pipeline->layout, 0, 1, &descset, 0, nullptr);
+	vkCmdDrawIndexed(rf.cmdbuf, mesh->index_count, 1, 0, 0, 0);
 	vkCmdEndRenderPass(rf.cmdbuf);
 
 	if (vkEndCommandBuffer(rf.cmdbuf) != VK_SUCCESS)
