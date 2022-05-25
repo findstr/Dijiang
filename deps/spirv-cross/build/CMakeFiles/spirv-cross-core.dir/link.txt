@@ -1,0 +1,2 @@
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar qc libspirv-cross-core.a CMakeFiles/spirv-cross-core.dir/spirv_cross.cpp.o CMakeFiles/spirv-cross-core.dir/spirv_parser.cpp.o CMakeFiles/spirv-cross-core.dir/spirv_cross_parsed_ir.cpp.o CMakeFiles/spirv-cross-core.dir/spirv_cfg.cpp.o
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ranlib libspirv-cross-core.a
