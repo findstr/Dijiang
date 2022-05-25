@@ -14,7 +14,7 @@
 #include "framework/components/meshfilter.h"
 #include "framework/components/meshrender.h"
 #include "framework/components/camera.h"
-#include "framework/components/camcontrol.h"
+#include "framework/components/luacomponent.h"
 #include "resource.h"
 
 
@@ -193,6 +193,22 @@ parse_camera(camera *cam, YAML::Node n)
 	cam->clip_far_plane = n["clip_far_plane"].as<float>();
 }
 
+static void
+parse_lua(luacomponent *lua, YAML::Node n)
+{
+	for (auto it = n.begin(); it != n.end(); ++it) {
+		auto key = it->first.as<std::string>();
+		auto val = it->second.as<std::string>();
+		if (val.size() == 0)
+			continue;
+		int ch = val[0];
+		if (ch == '+' || ch == '-')
+			lua->set_attr(key, std::stof(val));
+		else
+			lua->set_attr(key, val);
+	}
+}
+
 void
 load_level(const std::string &file, std::function<void(gameobject *)> add_go)
 {
@@ -221,9 +237,10 @@ load_level(const std::string &file, std::function<void(gameobject *)> add_go)
 					auto cam = new camera(go);
 					go->add_component(cam);
 					parse_camera(cam, it->second);
-				} else if (type == "camcontrol") {
-					auto cc = new camcontrol(go);
-					go->add_component(cc);
+				} else {
+					auto lc = new luacomponent(go, type);
+					go->add_component(lc);
+					parse_lua(lc, it->second);
 				}
 			}
 		}

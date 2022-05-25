@@ -18,6 +18,12 @@ level::~level()
 void
 level::tick(float delta)
 {
+	gobjects.reserve(gobjects.size() + adding.size());
+	for (auto *go : adding) {
+		go->start();
+		gobjects.emplace_back(go);
+	}
+	adding.clear();
 	for (auto *go : gobjects)
 		go->tick(delta);
 }
@@ -25,7 +31,7 @@ level::tick(float delta)
 void
 level::add_gameobject(gameobject *go)
 {
-	gobjects.emplace_back(go);
+	adding.emplace_back(go);
 }
 
 //////---- static level

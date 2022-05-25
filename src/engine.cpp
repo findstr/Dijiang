@@ -1,8 +1,9 @@
-#include "engine.h"
+#include "luavm.h"
 #include "resource/resource.h"
 #include "render/painter.h"
 #include "framework/level.h"
 #include "framework/components/camera.h"
+#include "engine.h"
 
 namespace engine {
 
@@ -14,6 +15,7 @@ struct {
 void
 init()
 {
+	luavm::init();
 	E.render.init();
 	resource::init();
 }

@@ -88,9 +88,6 @@ else()
     message(STATUS "SPIRV-Cross: Git not found, using unknown build version.")
 endif()
 
-string(TIMESTAMP spirv-cross-timestamp)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/gitversion.in.h ${CMAKE_CURRENT_BINARY_DIR}/gitversion.h @ONLY)
-
 if (SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS)
     set(spirv-compiler-defines ${spirv-compiler-defines} SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS)
     if (NOT MSVC)

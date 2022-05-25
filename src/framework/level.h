@@ -12,6 +12,7 @@ class level {
 private:
 	std::string name;
 	std::vector<gameobject *> gobjects;
+	std::vector<gameobject *> adding;
 public:
 	level(const std::string &path);
 	~level();

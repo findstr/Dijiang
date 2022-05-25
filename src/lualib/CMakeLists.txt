@@ -1,0 +1,11 @@
+PROJECT(engine)
+if(CMAKE_HOST_APPLE)
+	MESSAGE(STATUS "APPLE")
+	set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS} -undefined dynamic_lookup")
+endif()
+file(GLOB src CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+add_library(engine MODULE ${src})
+SET_TARGET_PROPERTIES(engine PROPERTIES PREFIX "")
+target_include_directories(engine INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(engine PRIVATE lua)
+

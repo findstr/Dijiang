@@ -33,6 +33,13 @@ gameobject::remove_component(const std::string &type)
 }
 
 void
+gameobject::start()
+{
+	for (auto c:components)
+		c->start();
+}
+
+void
 gameobject::tick(float delta)
 {
 	for (auto c:components)

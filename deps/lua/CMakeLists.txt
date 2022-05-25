@@ -39,8 +39,8 @@ if(LUA_BUILD_AS_CXX)
     set_source_files_properties(${LUA_LIB_SRCS} "src/lua.c" "src/luac.c" PROPERTIES LANGUAGE CXX )
 endif()
 
+add_compile_options(-DLUA_USE_MACOSX -DLUA_USE_READLINE)
 add_library(lua_internal INTERFACE)
-
 add_library(lua_include INTERFACE)
 
 target_include_directories(lua_include INTERFACE
@@ -49,25 +49,5 @@ target_include_directories(lua_include INTERFACE
 )
 
 target_link_libraries(lua_internal INTERFACE lua_include)
-
-if(LUA_ENABLE_SHARED)
-    add_library(lua_shared SHARED ${LUA_LIB_SRCS})
-    target_link_libraries(lua_shared PRIVATE lua_internal PUBLIC lua_include)
-    set_target_properties(lua_shared PROPERTIES
-        VERSION "${PACKAGE_VERSION}"
-    )
-    if(WIN32)
-        target_compile_definitions(lua_shared PRIVATE LUA_BUILD_AS_DLL)
-    endif()
-    list(APPEND TARGETS_TO_INSTALL lua_shared)
-    if(BUILD_SHARED_LIBS)
-        add_library(Lua::Library ALIAS lua_shared)
-    elseif(NOT TOP_LEVEL)
-        set_target_properties(lua_shared PROPERTIES
-            EXCLUDE_FROM_ALL ON
-        )
-    endif()
-endif()
-
 add_library(lua STATIC ${LUA_LIB_SRCS})
 

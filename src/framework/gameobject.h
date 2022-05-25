@@ -22,6 +22,7 @@ public:
 	void add_component(component *);
 	component *get_component(const std::string &type);
 	void remove_component(const std::string &type);
+	void start();
 	void tick(float delta);
 };
 

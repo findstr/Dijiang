@@ -68,4 +68,4 @@ target_link_libraries(${TARGET_NAME} PRIVATE spirv-cross-cpp)
 target_link_libraries(${TARGET_NAME} PRIVATE spirv-cross-reflect)
 target_link_libraries(${TARGET_NAME} PRIVATE spirv-cross-hlsl)
 
-
+add_subdirectory(lualib)

@@ -23,9 +23,12 @@ include_directories(${DEPS_DIR}/vk_mem)
 message(STATUS "build type:")
 message(STATUS "CXX_FLAGS = ${CMAKE_CXX_FLAGS} ")
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/")
+
 add_subdirectory(deps/)
 add_subdirectory(src/)
-#add_subdirectory(src/lualib)
 
 execute_process(COMMAND pwd)
 execute_process(
