@@ -22,6 +22,7 @@ public:
 	std::shared_ptr<vk_buffer> uniformbuffer;
 	std::shared_ptr<vk_pass> renderpass;
 	std::unique_ptr<vk_pipeline> pipeline;
+	std::unordered_map<std::string, std::shared_ptr<render::texture>> tex_args;
 };
 
 

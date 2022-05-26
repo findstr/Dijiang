@@ -1,36 +1,108 @@
 #include <optional>
+#include <assert.h>
 #include "vk_object.h"
 #include "samplermgr.h"
 #include "cmdbuf.h"
 #include "vk_buffer.h"
 #include "vk_texture.h"
+#include "vk_format.h"
+#include "vk_filter.h"
+#include "vk_sampler_address_mode.h"
 #include "renderctx.h"
 
 namespace engine {
 namespace vulkan {
 
-void
-texture_del(textureEx &tex)
+vk_texture::~vk_texture()
 {
-	return texture_del(renderctx_get(), tex);
-}
-void
-texture_del(const renderctx *ctx, textureEx &tex)
-{
-	if (tex.sampler != VK_NULL_HANDLE)
-		samplermgr_delsampler(ctx, tex.sampler);
-	vkDestroyImageView(ctx->logicdevice, tex.view, nullptr);
-	vmaDestroyImage(ctx->allocator, tex.image, tex.allocation);
+	destroy();
 }
 
-VkImageView
-texture_new_view(const renderctx *ctx,
-	VkImage image,
-	VkFormat format,
-	VkImageAspectFlags aspectFlags,
-	uint32_t mipLevels)
+void
+vk_texture::destroy()
 {
-	VkImageView imageView;
+	if (sampler_ != VK_NULL_HANDLE) {
+		vkDestroySampler(vk_ctx->logicdevice, sampler_, nullptr);
+		sampler_ = VK_NULL_HANDLE;
+	}
+	if (view != VK_NULL_HANDLE) {
+		vkDestroyImageView(vk_ctx->logicdevice, view, nullptr);
+		view = VK_NULL_HANDLE;
+	}
+	if (image != VK_NULL_HANDLE) {
+		vmaDestroyImage(vk_ctx->allocator, image, allocation);
+		image = VK_NULL_HANDLE;
+	}
+}
+
+VkSampler
+vk_texture::sampler(const render::texture *tex)
+{
+	if (sampler_ != VK_NULL_HANDLE)
+		return sampler_;
+	vk_filter vkfilter(tex->filter);
+	vk_sampler_address_mode vk_address_u(tex->wrap_mode_u);
+	vk_sampler_address_mode vk_address_v(tex->wrap_mode_v);
+	vk_sampler_address_mode vk_address_w(tex->wrap_mode_w);
+
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = vkfilter;
+	samplerInfo.minFilter = vkfilter;
+	samplerInfo.addressModeU = vk_address_u;
+	samplerInfo.addressModeV = vk_address_v;
+	samplerInfo.addressModeW = vk_address_w;
+	if (tex->anisolevels > 0) {
+		int max;
+		VkPhysicalDeviceProperties prop{};
+		vkGetPhysicalDeviceProperties(vk_ctx->phydevice, &prop);
+		max = prop.limits.maxSamplerAnisotropy;
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.maxAnisotropy = std::min(max, tex->anisolevels);
+	}
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipLodBias = 0.0f;
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = static_cast<float>(tex->miplevels);
+	auto ret = vkCreateSampler(vk_ctx->logicdevice, &samplerInfo, nullptr, &sampler_);
+	if (ret != VK_SUCCESS)
+		return VK_NULL_HANDLE;
+	return sampler_;
+}
+
+
+void
+vk_texture::create(const render::texture *tex, int layer_count)
+{
+	destroy();
+	vk_format format(tex->format, tex->linear);
+	VkImageCreateInfo imageInfo{};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.width = static_cast<uint32_t>(tex->width());
+	imageInfo.extent.height = static_cast<uint32_t>(tex->height());
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = tex->miplevels;
+	imageInfo.arrayLayers = layer_count;
+	imageInfo.format = format,
+	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.flags = 0;
+
+	VmaAllocationCreateInfo vaci = {};
+	vaci.usage = VMA_MEMORY_USAGE_AUTO;
+	vaci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+	vaci.priority = 1.0f;
+	auto ret = vmaCreateImage(vk_ctx->allocator, &imageInfo, &vaci, &image, &allocation, nullptr);
+	assert(ret == VK_SUCCESS);
+
 	VkImageViewCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	createInfo.image = image;
@@ -40,98 +112,16 @@ texture_new_view(const renderctx *ctx,
 	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.subresourceRange.aspectMask = aspectFlags;
+	createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 	createInfo.subresourceRange.baseMipLevel = 0;
-	createInfo.subresourceRange.levelCount = mipLevels;
+	createInfo.subresourceRange.levelCount = tex->miplevels;
 	createInfo.subresourceRange.baseArrayLayer = 0;
-	createInfo.subresourceRange.layerCount = 1;
-	if (vkCreateImageView(ctx->logicdevice, &createInfo, nullptr, &imageView) != VK_SUCCESS)
-		return VK_NULL_HANDLE;
-	return imageView;
+	createInfo.subresourceRange.layerCount = layer_count;
+	ret = vkCreateImageView(vk_ctx->logicdevice, &createInfo, nullptr, &view);
+	assert(ret == VK_SUCCESS);
+	printf("create vk_texture:%p:%d\n", view, ret);
 }
 
-
-std::optional<textureEx>
-texture_new(const renderctx *ctx,
-	uint32_t width, uint32_t height,
-	const texture_setting &setting)
-{
-	textureEx tex;
-	VkFormat format = setting.format;
-	uint32_t miplevels = setting.mipmap_levels;
-	VkImageCreateInfo imageInfo{};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = static_cast<uint32_t>(width);
-	imageInfo.extent.height = static_cast<uint32_t>(height);
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = miplevels;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = format,
-	imageInfo.tiling = setting.tiling;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.usage = setting.usage,
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.flags = 0;
-
-	VmaAllocationCreateInfo vaci = {};
-	vaci.usage = VMA_MEMORY_USAGE_AUTO;
-	vaci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-	vaci.priority = 1.0f;
-	auto ret = vmaCreateImage(ctx->allocator, &imageInfo, &vaci, &tex.image, &tex.allocation, nullptr);
-	printf("texture_new:%d\n", ret);
-	if (ret != VK_SUCCESS)
-		return std::nullopt;
-	tex.view = texture_new_view(ctx, tex.image, format, setting.aspectflags, miplevels);
-	tex.sampler = samplermgr_newsampler(ctx, setting);
-	return tex;
-}
-
-std::optional<textureEx> texture_new(
-	uint32_t width, uint32_t height,
-	const texture_setting &setting)
-{
-	return texture_new(renderctx_get(), width, height, setting);
-}
-
-
-std::optional<textureEx>
-texture_new_depth(
-	const renderctx *ctx,
-	uint32_t width, uint32_t height,
-	const texture_setting &setting)
-{
-	textureEx tex;
-	VkImageCreateInfo imageInfo{};
-	VkFormat format = setting.format;
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = static_cast<uint32_t>(width);
-	imageInfo.extent.height = static_cast<uint32_t>(height);
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = setting.mipmap_levels;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = format;
-	imageInfo.tiling = setting.tiling;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.usage = setting.usage,
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.flags = 0;
-
-	VmaAllocationCreateInfo vaci = {};
-	vaci.usage = VMA_MEMORY_USAGE_AUTO;
-	vaci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-	vaci.priority = 1.0f;
-
-	auto ret = vmaCreateImage(ctx->allocator, &imageInfo, &vaci, &tex.image, &tex.allocation, nullptr);
-	if (ret != VK_SUCCESS)
-		return std::nullopt;
-	tex.view = texture_new_view(ctx, tex.image, format, setting.aspectflags, setting.mipmap_levels);
-	tex.sampler = VK_NULL_HANDLE;
-	return tex;
-}
 
 bool hasStencilComponent(VkFormat format)
 {
@@ -139,12 +129,14 @@ bool hasStencilComponent(VkFormat format)
 }
 
 void
-texture_transition_layout(
-	const renderctx *ctx,
-	textureEx &tex, VkFormat format, int miplevels,
-	VkImageLayout from, VkImageLayout to)
+vk_texture::transition_layout(
+	const render::texture *tex,
+	VkImageLayout from,
+	VkImageLayout to,
+	int layer_count)
 {
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin(ctx);
+	vk_format format(tex->format);
+	VkCommandBuffer commandBuffer = cmdbuf_single_begin(vk_ctx);
 
 	VkPipelineStageFlags srcStage;
 	VkPipelineStageFlags dstStage;
@@ -155,7 +147,7 @@ texture_transition_layout(
 	barrier.newLayout = to;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = tex.image;
+	barrier.image = image;
 	if (to == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		if (hasStencilComponent(format))
@@ -164,9 +156,9 @@ texture_transition_layout(
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
 	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = miplevels;
+	barrier.subresourceRange.levelCount = tex->miplevels;
 	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.layerCount = layer_count;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = 0;
 	if (from == VK_IMAGE_LAYOUT_UNDEFINED && to == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
@@ -196,34 +188,62 @@ texture_transition_layout(
 		0, nullptr,
 		1, &barrier
 	);
-	cmdbuf_single_end(ctx, commandBuffer);
+	cmdbuf_single_end(vk_ctx, commandBuffer);
 }
 
 void
-texture_gen_mipmap(const renderctx *ctx,
-	textureEx &tex, VkFormat imageFormat,
-	int32_t width, int32_t height, int32_t mipLevels)
+vk_texture::fill(const render::texture *tex, vk_buffer &staging, int layer_count)
 {
-	if (mipLevels == 0)
+	VkCommandBuffer commandBuffer = cmdbuf_single_begin(vk_ctx);
+
+	VkBufferImageCopy region{};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.mipLevel = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = layer_count;
+
+	region.imageOffset = { 0, 0, 0 };
+	region.imageExtent = { (uint32_t)tex->width(), (uint32_t)tex->height(), 1};
+
+	vkCmdCopyBufferToImage(
+		commandBuffer,
+		staging.handle,
+		image,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1,
+		&region
+	);
+	cmdbuf_single_end(vk_ctx, commandBuffer);
+}
+
+void
+vk_texture::gen_mipmap(const render::texture *tex, int layer_count)
+{
+	if (tex->miplevels == 0)
 		return ;
+	vk_format image_format(tex->format);
 	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(ctx->phydevice, imageFormat, &formatProperties);
+	vkGetPhysicalDeviceFormatProperties(vk_ctx->phydevice, image_format, &formatProperties);
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
 		throw std::runtime_error("texture image format does not support linear blitting!");
 	}
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin(ctx);
+	VkCommandBuffer commandBuffer = cmdbuf_single_begin(vk_ctx);
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.image = tex.image;
+	barrier.image = image;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
 	barrier.subresourceRange.levelCount = 1;
-	int32_t mipWidth = width;
-	int32_t mipHeight = height;
-	for (uint32_t i = 1; i < mipLevels; i++) {
+	barrier.subresourceRange.layerCount = layer_count;
+	int32_t mipWidth = tex->width();
+	int32_t mipHeight = tex->height();
+	for (uint32_t i = 1; i < tex->miplevels; i++) {
 		barrier.subresourceRange.baseMipLevel = i - 1;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -241,7 +261,7 @@ texture_gen_mipmap(const renderctx *ctx,
 		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		blit.srcSubresource.mipLevel = i - 1;
 		blit.srcSubresource.baseArrayLayer = 0;
-		blit.srcSubresource.layerCount = 1;
+		blit.srcSubresource.layerCount = layer_count;
 
 		mipWidth = mipWidth > 1 ? mipWidth / 2 : 1;
 		mipHeight = mipHeight > 1 ? mipHeight / 2 : 1;
@@ -251,7 +271,7 @@ texture_gen_mipmap(const renderctx *ctx,
 		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		blit.dstSubresource.mipLevel = i;
 		blit.dstSubresource.baseArrayLayer = 0;
-		blit.dstSubresource.layerCount = 1;
+		blit.dstSubresource.layerCount = layer_count;
 
 		barrier.subresourceRange.baseMipLevel = i;
 		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -265,8 +285,8 @@ texture_gen_mipmap(const renderctx *ctx,
 			1, &barrier);
 
 		vkCmdBlitImage(commandBuffer,
-			tex.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			tex.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1, &blit,
 			VK_FILTER_LINEAR);
 
@@ -282,7 +302,7 @@ texture_gen_mipmap(const renderctx *ctx,
 			0, nullptr,
 			1, &barrier);
 	}
-	barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+	barrier.subresourceRange.baseMipLevel = tex->miplevels - 1;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -292,96 +312,9 @@ texture_gen_mipmap(const renderctx *ctx,
 			0, nullptr,
 			0, nullptr,
 			1, &barrier);
-	cmdbuf_single_end(ctx, commandBuffer);
-}
-
-void
-texture_fill(const renderctx *ctx,
-	textureEx &tex, const vk_buffer &buf,
-	int32_t width, int32_t height)
-{
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin(ctx);
-
-	VkBufferImageCopy region{};
-	region.bufferOffset = 0;
-	region.bufferRowLength = 0;
-	region.bufferImageHeight = 0;
-
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
-
-	region.imageOffset = { 0, 0, 0 };
-	region.imageExtent = { (uint32_t)width, (uint32_t)height, 1 };
-
-	vkCmdCopyBufferToImage(
-		commandBuffer,
-		buf.handle,
-		tex.image,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		1,
-		&region
-	);
-
-	cmdbuf_single_end(ctx, commandBuffer);
-}
-
-void
-texture_upload(textureEx &tex, int width, int height, void *pixel, size_t sz, int miplevels)
-{
-	void *data;
-	auto *ctx = renderctx_get();
-	vk_buffer staging(vk_buffer::STAGING, sz);
-	staging.upload(pixel, static_cast<uint32_t>(sz));
-	texture_transition_layout(ctx, tex,
-		VK_FORMAT_R8G8B8A8_SRGB, 1,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	texture_fill(ctx, tex, staging, width, height);
-	texture_gen_mipmap(ctx, tex, VK_FORMAT_R8G8B8A8_SRGB, width, height, miplevels);
-}
-
-void
-texture::apply()
-{
-	auto *ctx = renderctx_get();
-	if (handle)
-		texture_del(*handle);
-	texture_setting setting = {
-		.wrap_mode = TEX_WRAP_REPEAT,
-		.filter_mode = TEX_FILTER_POINT,
-		.mipmap_levels = (int)miplevels,
-		.aniso_level = 0,
-		.format = VK_FORMAT_R8G8B8A8_SRGB,
-		.tiling = VK_IMAGE_TILING_OPTIMAL,
-		.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		.aspectflags = VK_IMAGE_ASPECT_COLOR_BIT,
-	};
-	handle = texture_new(ctx, width_, height_, setting);
-	texture_upload(*handle, width_, height_, pixel.data(), pixel.size(), miplevels);
-}
-
-
-
-}
-
-namespace render {
-
-texture *
-texture::create(int width, int height,
-	texture_format format,
-	bool linear, int miplevels)
-{
-	texture *tex = new vulkan::texture();
-	tex->width_ = width;
-	tex->height_ = height;
-	tex->linear = false;
-	tex->miplevels = miplevels;
-	return tex;
+	cmdbuf_single_end(vk_ctx, commandBuffer);
 }
 
 }
-
 }
 

@@ -10,19 +10,16 @@ namespace render {
 
 class texture {
 public:
-	static texture *create(int width, int height,
-		texture_format format = texture_format::RGBA32,
-		bool linear = false, int miplevels = 0);
-	virtual ~texture() {}
+	enum type {
+		UNKONW,
+		TEX2D,
+		TEX3D,
+		CUBE,
+		TEX2D_ARRAY,
+		CUBE_ARRAY,
+	};
+	texture(enum type t) : type_(t) {}
 public:
-	int width() const;
-	int height() const;
-	void setpixel(std::vector<uint8_t> &pixel);
-public:
-	virtual void apply() = 0;
-public:
-	int width_ = 0;
-	int height_ = 0;
 	bool linear = false;
 	int miplevels = 0;
 	int anisolevels = 0;
@@ -31,8 +28,13 @@ public:
 	texture_wrap wrap_mode_w = texture_wrap::CLAMP;
 	texture_format format = texture_format::RGBA32;
 	texture_filter filter = texture_filter::BILINEAR;
+	inline int width() const { return width_; }
+	inline int height() const { return height_; }
+	inline enum type type() const { return type_; }
 protected:
-	std::vector<uint8_t> pixel;
+	int width_;
+	int height_;
+	enum type type_;
 };
 
 

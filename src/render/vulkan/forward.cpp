@@ -231,6 +231,15 @@ new_pipeline(const renderctx *ctx, forward *fw)
 	std::tie(fw->pipeline, fw->pipelinelayout) = pipelinex_create(ctx, fw->renderpass, desc_set_layout, shaderstages);
 }*/
 
+static void
+texture_del(const renderctx *ctx, textureEx &tex)
+{
+	if (tex.sampler != VK_NULL_HANDLE)
+		vkDestroySampler(ctx->logicdevice, tex.sampler, nullptr);
+	vkDestroyImageView(ctx->logicdevice, tex.view, nullptr);
+	vmaDestroyImage(ctx->allocator, tex.image, tex.allocation);
+}
+
 void
 forward_del(const renderctx *ctx, forward *fw)
 {
@@ -246,6 +255,71 @@ forward_del(const renderctx *ctx, forward *fw)
 	vkDestroyRenderPass(ctx->logicdevice, fw->renderpass, nullptr);
 	delete fw;
 }
+
+static VkImageView
+texture_new_view(const renderctx *ctx,
+	VkImage image,
+	VkFormat format,
+	VkImageAspectFlags aspectFlags,
+	uint32_t mipLevels)
+{
+	VkImageView imageView;
+	VkImageViewCreateInfo createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	createInfo.image = image;
+	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	createInfo.format = format;
+	createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.subresourceRange.aspectMask = aspectFlags;
+	createInfo.subresourceRange.baseMipLevel = 0;
+	createInfo.subresourceRange.levelCount = mipLevels;
+	createInfo.subresourceRange.baseArrayLayer = 0;
+	createInfo.subresourceRange.layerCount = 1;
+	if (vkCreateImageView(ctx->logicdevice, &createInfo, nullptr, &imageView) != VK_SUCCESS)
+		return VK_NULL_HANDLE;
+	return imageView;
+}
+
+static std::optional<textureEx>
+texture_new_depth(
+	const renderctx *ctx,
+	uint32_t width, uint32_t height,
+	const texture_setting &setting)
+{
+	textureEx tex;
+	VkImageCreateInfo imageInfo{};
+	VkFormat format = setting.format;
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.width = static_cast<uint32_t>(width);
+	imageInfo.extent.height = static_cast<uint32_t>(height);
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = setting.mipmap_levels;
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = format;
+	imageInfo.tiling = setting.tiling;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.usage = setting.usage,
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.flags = 0;
+
+	VmaAllocationCreateInfo vaci = {};
+	vaci.usage = VMA_MEMORY_USAGE_AUTO;
+	vaci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+	vaci.priority = 1.0f;
+
+	auto ret = vmaCreateImage(ctx->allocator, &imageInfo, &vaci, &tex.image, &tex.allocation, nullptr);
+	if (ret != VK_SUCCESS)
+		return std::nullopt;
+	tex.view = texture_new_view(ctx, tex.image, format, setting.aspectflags, setting.mipmap_levels);
+	tex.sampler = VK_NULL_HANDLE;
+	return tex;
+}
+
 
 forward *
 forward_new(const renderctx *ctx)

@@ -15,6 +15,7 @@
 #include "framework/components/meshrender.h"
 #include "framework/components/camera.h"
 #include "framework/components/luacomponent.h"
+#include "render/texture2d.h"
 #include "resource.h"
 
 
@@ -34,7 +35,7 @@ cleanup()
 }
 
 std::shared_ptr<render::texture>
-load_texture(const std::string &file)
+load_texture2d(const std::string &file)
 {
 	int width, height, channels;
 	std::vector<uint8_t> pixels_data;
@@ -50,7 +51,7 @@ load_texture(const std::string &file)
 	pixels_data.resize(image_size);
 	memcpy(pixels_data.data(), pixels, (uint32_t)image_size);
 	stbi_image_free(pixels);
-	auto tex = render::texture::create(width, height);
+	auto tex = render::texture2d::create(width, height);
 	tex->setpixel(pixels_data);
 	tex->miplevels = miplevels;
 	tex->apply();
@@ -101,7 +102,7 @@ load_material(const std::string &file)
 		auto type = n["type"].as<std::string>();
 		auto file = n["file"].as<std::string>();
 		if (type == "texture2d") {
-			auto tex = load_texture(file);
+			auto tex = load_texture2d(file);
 			m->set_texture(name, tex);
 		}
 	}

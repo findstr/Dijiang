@@ -6,6 +6,7 @@
 #include "vk_shader.h"
 #include "vk_texture.h"
 #include "vk_pass.h"
+#include "vk_native.h"
 #include "vk_material.h"
 
 namespace engine {
@@ -73,11 +74,11 @@ vk_material::set_texture(const std::string &name,
 {
 	auto *ctx = renderctx_get();
 	class vk_shader *rs = static_cast<class vk_shader *>(shader.get());
+	tex_args[name] = tex;
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = ((texture *)tex.get())->handle->view;
-	imageInfo.sampler = ((texture *)tex.get())->handle->sampler;
-	printf("set_texture:%p-%p\n", imageInfo.imageView, imageInfo.sampler);
+	imageInfo.imageView = native_of(tex.get()).view;
+	imageInfo.sampler = native_of(tex.get()).sampler(tex.get());
 	std::vector<VkWriteDescriptorSet> descriptorWrite;
 	descriptorWrite.reserve(4);
 	for (size_t i = 0; i < desc_set.size(); i++) {

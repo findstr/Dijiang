@@ -7,54 +7,21 @@
 namespace engine {
 namespace vulkan {
 
-void texture_del(textureEx &tex);
-void texture_del(const renderctx *ctx, textureEx &tex);
-
-std::optional<textureEx> texture_new(
-	uint32_t width, uint32_t height,
-	const texture_setting &setting);
-
-
-std::optional<textureEx> texture_new(
-	const renderctx *ctx,
-	uint32_t width, uint32_t height,
-	const texture_setting &setting);
-
-std::optional<textureEx> texture_new_depth(
-	const renderctx *ctx,
-	uint32_t width, uint32_t height,
-	const texture_setting &setting);
-
-
-VkImageView texture_new_view(
-		const renderctx *ctx,
-		VkImage image,
-		VkFormat format,
-		VkImageAspectFlags aspectFlags,
-		uint32_t mipLevels);
-
-void texture_transition_layout(
-		const renderctx *ctx,
-		textureEx &tex, VkFormat format, int miplevels,
-		VkImageLayout from, VkImageLayout to);
-
-
-void texture_gen_mipmap(const renderctx *ctx,
-		textureEx &tex, VkFormat imageFormat,
-		int32_t width, int32_t height, int32_t mipLevels);
-
-void texture_fill(const renderctx *ctx,
-		textureEx &tex, const vk_buffer &buf,
-		int32_t width, int32_t height);
-
-void texture_upload(textureEx &tex, int width, int height, void *pixel, size_t sz, int miplevels);
-
-class texture : public render::texture {
+struct vk_texture {
 public:
-	~texture() override {}
-	void apply() override;
+	~vk_texture();
 public:
-	std::optional<textureEx> handle;
+	void destroy();
+	void create(const render::texture *tex, int layer_count = 1);
+	void transition_layout(const render::texture *tex, VkImageLayout from, VkImageLayout to, int layer_count = 1);
+	void fill(const render::texture *tex, vk_buffer &staging, int layer_count = 1);
+	void gen_mipmap(const render::texture *tex, int layer_count = 1);
+	VkSampler sampler(const render::texture *tex);
+public:
+	VkImage image = VK_NULL_HANDLE;
+	VkImageView view = VK_NULL_HANDLE;
+	VkSampler sampler_ = VK_NULL_HANDLE;
+	VmaAllocation allocation = VK_NULL_HANDLE;
 };
 
 }}

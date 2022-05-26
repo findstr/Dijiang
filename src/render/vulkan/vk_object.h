@@ -5,20 +5,7 @@
 
 namespace engine {
 namespace vulkan {
-	enum texture_wrap : int {
-		TEX_WRAP_REPEAT = 0,
-		TEX_WRAP_CLAMP = 1,
-	};
-
-	enum texture_filter : int {
-		TEX_FILTER_POINT = 0,
-		TEX_FILTER_BILINEAR = 1,
-		TEX_FILTER_TRILINEAR = 2,
-	};
-
 	struct texture_setting {
-		texture_wrap wrap_mode = TEX_WRAP_CLAMP;
-		texture_filter filter_mode = TEX_FILTER_POINT;
 		int mipmap_levels = 0;
 		int aniso_level = 0;
 		VkFormat format;
