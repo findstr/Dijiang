@@ -1,4 +1,5 @@
 #include <iostream>
+#include "vertex.h"
 #include "vk_mesh.h"
 
 namespace engine {
@@ -10,28 +11,32 @@ vk_mesh::upload_vertex(std::unique_ptr<vk_buffer> &buf)
 	vk_buffer *vk_buf;
 	bool hasuv = uv.size() >= vertices.size();
 	bool hascolor = colors.size() >= vertices.size();
-	size_t vertex_size = sizeof(vertices[0]);
-	if (hasuv)
-		vertex_size += sizeof(float) * 2;
-	if (hascolor)
-		vertex_size += sizeof(float) * 3;
-	VkDeviceSize size = vertex_size * vertices.size();
+	size_t vertex_size = render::vertex_type::size();
+	VkDeviceSize size = vertex_size * sizeof(float) * vertices.size();
 	vk_buffer staging(vk_buffer::STAGING, size);
 	float *stage_buf =  (float *)staging.map();
 	float *data = stage_buf;
+	render::vertex_type t_pos = render::vertex_type::POSITION;
+	render::vertex_type t_uv = render::vertex_type::TEXCOORD;
+	render::vertex_type t_color = render::vertex_type::COLOR;
+
 	for (int i = 0; i < vertices.size(); i++) {
-		*data++ = vertices[i].x();
-		*data++ = vertices[i].y();
-		*data++ = vertices[i].z();
+		auto *p = &data[t_pos.offset()];
+		p[0] = vertices[i].x();
+		p[1] = vertices[i].y();
+		p[2] = vertices[i].z();
 		if (hasuv) {
-			*data++ = uv[i].x();
-			*data++ = uv[i].y();
+			auto *p = &data[t_uv.offset()];
+			p[0] = uv[i].x();
+			p[1] = uv[i].y();
 		}
 		if (hascolor) {
-			*data++ = colors[i].x();
-			*data++ = colors[i].y();
-			*data++ = colors[i].z();
+			auto *p = &data[t_color.offset()];
+			p[0] = colors[i].x();
+			p[1] = colors[i].y();
+			p[2] = colors[i].z();
 		}
+		data += vertex_size;
 	}
 	staging.unmap();
 	vk_buf = buf.get();

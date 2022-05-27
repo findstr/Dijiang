@@ -79,6 +79,7 @@ init()
 {
 	M.main = lua_newstate(lua_alloc, nullptr);
 	luaL_openlibs(M.main);
+	setlibpath(M.main, "asset/lua/?.lua", "./?.so");
 	M.ctx = lua_newthread(M.main);
 	M.ctx_handle = luaL_ref(M.main, LUA_REGISTRYINDEX);
 	lua_pushcfunction(M.ctx, ltraceback);

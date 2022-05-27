@@ -368,30 +368,22 @@ update_uniformbuffer(const renderctx *ctx, vk_buffer *ub, camera *cam,  const dr
 			glm::vec3(eye.x(), eye.y(), eye.z()),
 			glm::vec3(eye_dir.x(), eye_dir.y(), eye_dir.z()),
 			glm::vec3(up.x(), up.y(), up.z()));
-
 	ubo.proj = glm::perspective(glm::radians(cam->fov), cam->aspect,
 		cam->clip_near_plane, cam->clip_far_plane);
 	ubo.proj[1][1] *= -1;
 	ub->upload(&ubo, sizeof(ubo));
 }
 
+static int image_index;
 void
-forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &draw)
+forward_begin(forward *fw)
 {
-	int image_index;
 	auto &rf = fw->renderframes[fw->frameidx];
-	if (framesync_aquire(ctx, rf.sync, &image_index)) {
+	if (framesync_aquire(vk_ctx, rf.sync, &image_index)) {
 		//TODO:recreate swapchain
 		return ;
 	}
-	vk_mesh *mesh = (vk_mesh *)draw.mesh;
-	vk_material *mat = (vk_material *)draw.material;
 	auto &fb = fw->framebuffers[image_index];
-	mesh->flush();
-	auto descset = mat->desc_set[fw->frameidx];
-
-	update_uniformbuffer(ctx, mat->uniformbuffer.get(), cam, draw);
-
 	std::array<VkClearValue, 2> clearColor{};
 	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
 	clearColor[1].depthStencil = { 1.0f, 0 };
@@ -410,10 +402,37 @@ forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &
 	renderPassInfo.renderPass = fw->renderpass;
 	renderPassInfo.framebuffer = fb.handle;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = ctx->swapchain.extent;
+	renderPassInfo.renderArea.extent = vk_ctx->swapchain.extent;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
 	renderPassInfo.pClearValues = clearColor.data();
 	vkCmdBeginRenderPass(rf.cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+}
+
+void
+forward_end(forward *fw)
+{
+	auto &rf = fw->renderframes[fw->frameidx];
+	vkCmdEndRenderPass(rf.cmdbuf);
+	if (vkEndCommandBuffer(rf.cmdbuf) != VK_SUCCESS)
+		return ;
+	framesync_submit(vk_ctx, rf.sync, rf.cmdbuf, image_index);
+	fw->frameidx = (fw->frameidx + 1) % fw->renderframes.size();
+
+}
+
+
+void
+forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &draw)
+{
+	auto &rf = fw->renderframes[fw->frameidx];
+	vk_mesh *mesh = (vk_mesh *)draw.mesh;
+	vk_material *mat = (vk_material *)draw.material;
+	mesh->flush();
+	auto descset = mat->desc_set[fw->frameidx];
+
+	update_uniformbuffer(ctx, mat->uniformbuffer.get(), cam, draw);
+
 	vkCmdBindPipeline(rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline->handle);
 
 	auto vertexBuffer = mesh->vertex->handle;
@@ -426,13 +445,6 @@ forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &
 	vkCmdBindDescriptorSets(rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
 		mat->pipeline->layout, 0, 1, &descset, 0, nullptr);
 	vkCmdDrawIndexed(rf.cmdbuf, mesh->index_count, 1, 0, 0, 0);
-	vkCmdEndRenderPass(rf.cmdbuf);
-
-	if (vkEndCommandBuffer(rf.cmdbuf) != VK_SUCCESS)
-		return ;
-
-	framesync_submit(ctx, rf.sync, rf.cmdbuf, image_index);
-	fw->frameidx = (fw->frameidx + 1) % fw->renderframes.size();
 }
 
 }}

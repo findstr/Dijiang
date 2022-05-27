@@ -15,19 +15,16 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader)
 
 	VkVertexInputBindingDescription bindingDesc{};
 	bindingDesc.binding = 0;
-	bindingDesc.stride = shader->vertex_input.size;
+	bindingDesc.stride = render::vertex_type::size() * sizeof(float);
 	bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	//TODO: adaptor mesh
-	int offset = 0;
 	std::vector<VkVertexInputAttributeDescription> attrDescs;
 	attrDescs.reserve(shader->vertex_input.attrs.size());
 	for (const auto &attr:shader->vertex_input.attrs) {
 		auto &ad = attrDescs.emplace_back();
 		ad.binding = 0;
 		ad.location = attr.location;
-		ad.offset = offset;
-		printf("shader input:%d %d\n", attr.type, offset);
+		ad.offset = attr.type.offset() * sizeof(float);
 		switch (attr.type) {
 		case render::vertex_type::POSITION:
 			ad.format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -42,7 +39,6 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader)
 			assert(!"unsupport vertex attr type");
 			break;
 		}
-		offset += attr.size;
 	}
 
 	VkPipelineVertexInputStateCreateInfo vertexInputState = {};

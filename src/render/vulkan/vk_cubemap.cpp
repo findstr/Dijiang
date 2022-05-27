@@ -24,7 +24,7 @@ vk_cubemap::apply()
 	for (int i = 0; i < FACE_COUNT; i++)
 		memcpy(&data[i * tex_size], pixel[i].data(), tex_size);
 	staging.unmap();
-	native.transition_layout(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	native.transition_layout(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, FACE_COUNT);
 	native.fill(this, staging, FACE_COUNT);
 	native.gen_mipmap(this, FACE_COUNT);
 }

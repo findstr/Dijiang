@@ -45,10 +45,8 @@ public:
 	struct vertex_attr {
 		render::vertex_type type = render::vertex_type::NONE;
 		int location = -1;
-		int size = 0;
 	};
 	struct vertex {
-		int size = 0;
 		std::vector<vertex_attr> attrs;
 	};
 private:

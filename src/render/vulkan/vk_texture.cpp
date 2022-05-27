@@ -83,6 +83,10 @@ vk_texture::create(const render::texture *tex, int layer_count)
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	if (tex->type() == render::texture::CUBE) {
+		printf("cube\n");
+		imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+	}
 	imageInfo.extent.width = static_cast<uint32_t>(tex->width());
 	imageInfo.extent.height = static_cast<uint32_t>(tex->height());
 	imageInfo.extent.depth = 1;
@@ -94,7 +98,6 @@ vk_texture::create(const render::texture *tex, int layer_count)
 	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.flags = 0;
 
 	VmaAllocationCreateInfo vaci = {};
 	vaci.usage = VMA_MEMORY_USAGE_AUTO;
@@ -106,7 +109,10 @@ vk_texture::create(const render::texture *tex, int layer_count)
 	VkImageViewCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	createInfo.image = image;
-	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	if (tex->type() == render::texture::CUBE)
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	else
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	createInfo.format = format;
 	createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -223,7 +229,7 @@ vk_texture::fill(const render::texture *tex, vk_buffer &staging, int layer_count
 void
 vk_texture::gen_mipmap(const render::texture *tex, int layer_count)
 {
-	if (tex->miplevels == 0)
+	if (tex->miplevels <= 1)
 		return ;
 	vk_format image_format(tex->format);
 	VkFormatProperties formatProperties;

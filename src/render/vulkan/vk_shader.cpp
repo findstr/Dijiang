@@ -108,7 +108,6 @@ vk_shader::analyze_vertex_input(
 	spirv_cross::ShaderResources &resources,
 	VkShaderStageFlags stageflags)
 {
-	int size = 0;
 	if (stageflags != VK_SHADER_STAGE_VERTEX_BIT)
 		return ;
 	auto &attrs = vertex_input.attrs;
@@ -119,13 +118,7 @@ vk_shader::analyze_vertex_input(
 		auto &vt = attrs.emplace_back();
 		vt.type = name_to_vertex_type(type_name);
 		vt.location = compiler.get_decoration(si.id, spv::DecorationLocation);
-		vt.size = type.vecsize * type.width / 8;
-		size += vt.size;
 	}
-	std::sort(attrs.begin(), attrs.end(), [](auto &a, auto &b) {
-		return a.type < b.type;
-	});
-	vertex_input.size = size;
 }
 
 void

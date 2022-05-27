@@ -11,7 +11,6 @@
 #include <vector>
 #include <array>
 #include <chrono>
-#include <Eigen/Core>
 
 #include "vulkan/vk_object.h"
 #include "utils/file.h"
@@ -49,8 +48,10 @@ painter::draw(camera *cam, const std::vector<draw_object> &drawlist)
 {
 	if (surface_poll(surface) != 0)
 		return false;
+	forward_begin(forward);
 	for (auto &d:drawlist)
 		forward_tick(cam, ctx.get(), forward, d);
+	forward_end(forward);
 	return true;
 }
 

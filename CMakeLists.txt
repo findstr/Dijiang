@@ -10,7 +10,7 @@ SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_FLAGS "-g3")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+set(CMAKE_CXX_FLAGS_RELEASE "-O0")
 
 set(ROOT_DIR "./")
 set(DEPS_DIR "${ROOT_DIR}/deps")
@@ -29,11 +29,12 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/")
 
 add_subdirectory(deps/)
 add_subdirectory(src/)
+add_subdirectory(asset/)
 
-execute_process(COMMAND pwd)
-execute_process(
-	COMMAND mkdir -p shaders
-	COMMAND ../tools/shaderc.sh ../shaders ./shaders
+add_custom_target(release ALL
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${ROOT_DIR}/../bin/
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:Dijiang> ${ROOT_DIR}/../bin/
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:engine> ${ROOT_DIR}/../bin/
+	COMMAND ${CMAKE_COMMAND} -E copy_directory ${ROOT_DIR}../asset ${ROOT_DIR}/../bin/asset
 )
-
 

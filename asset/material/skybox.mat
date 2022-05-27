@@ -1,0 +1,12 @@
+render_queue : geometry
+shader_file: asset/shaders/skybox
+shader_params:
+    -
+        name: tex
+        type: cubemap
+        x+: asset/textures/left.jpg
+        x-: asset/textures/right.jpg
+        y+: asset/textures/top.jpg
+        y-: asset/textures/top.jpg
+        z+: asset/textures/front.jpg
+        z-: asset/textures/back.jpg

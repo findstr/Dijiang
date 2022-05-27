@@ -70,6 +70,17 @@ lgetlocalrot(lua_State *L)
 }
 
 static int
+lrotate(lua_State *L)
+{
+	float x = luaL_checknumber(L, 2);
+	float y = luaL_checknumber(L, 3);
+	float z = luaL_checknumber(L, 4);
+	quaternion q = quaternion::euler(x, y, z);
+	to_go(L, 1)->transform.rotation *= q;
+	return 0;
+}
+
+static int
 lsetlocalscale(lua_State *L)
 {
 	float x = luaL_checknumber(L, 2);
@@ -100,6 +111,7 @@ luaopen_engine_component(lua_State *L)
 		{"get_local_rotation", lgetlocalrot},
 		{"set_local_scale", lsetlocalscale},
 		{"get_local_scale", lgetlocalscale},
+		{"rotate", lrotate},
 		{NULL, NULL},
 	};
 	luaL_checkversion(L);

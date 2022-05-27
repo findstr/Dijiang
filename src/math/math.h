@@ -382,6 +382,27 @@ struct quaternion {
 		uuv *= 2.0f;
 		return v + uv + uuv;
 	}
+	quaternion operator *=(const quaternion &a) {
+		quaternion result;
+		result.w = w*a.w - x*a.x - y*a.y - z*a.z;
+		result.x = w*a.x + x*a.w + z*a.y - y*a.z;
+		result.y = w*a.y + y*a.w + x*a.z - z*a.x;
+		result.z = w*a.z + z*a.w + y*a.x - x*a.y;
+		w = result.w;
+		x = result.x;
+		y = result.y;
+		z = result.z;
+		return result;
+	}
+
+	quaternion operator *(const quaternion &a) {
+		quaternion result;
+		result.w = w*a.w - x*a.x - y*a.y - z*a.z;
+		result.x = w*a.x + x*a.w + z*a.y - y*a.z;
+		result.y = w*a.y + y*a.w + x*a.z - z*a.x;
+		result.z = w*a.z + z*a.w + y*a.x - x*a.y;
+		return result;
+	}
 	vector3f euler_angles() const {
 		vector3f result;
 		result.x() = atan2(2 * (y * z + w * x), w * w - x * x - y * y + z * z) * 180.f / PI;
@@ -412,6 +433,9 @@ struct quaternion {
 	}
 	static quaternion euler(float x, float y, float z) {
 		quaternion result;
+		x = x - ((int)x / 360 * 360);
+		y = y - ((int)y / 360 * 360);
+		z = z - ((int)z / 360 * 360);
 		auto c1 = cos(x * 0.5f / 180.f * PI);
 		auto c2 = cos(y * 0.5f / 180.f * PI);
 		auto c3 = cos(z * 0.5f / 180.f * PI);

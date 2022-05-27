@@ -16,6 +16,7 @@
 #include "framework/components/camera.h"
 #include "framework/components/luacomponent.h"
 #include "render/texture2d.h"
+#include "render/cubemap.h"
 #include "resource.h"
 
 
@@ -34,26 +35,59 @@ cleanup()
 
 }
 
+static void
+load_tex_file(const std::string &file, std::vector<uint8_t> &data, int *w, int *h, int *miplevels)
+{
+	int channels;
+	stbi_uc* pixels = stbi_load(file.c_str(),
+		w, h, &channels, STBI_rgb_alpha);
+	if (pixels == nullptr) {
+		fprintf(stderr, "[resource] load texture:%s fail\n", file.c_str());
+		exit(0);
+	}
+	size_t image_size = *w * *h * 4;
+	int max_length = std::max(*w, *h);
+	//*miplevels = (uint32_t)(std::floor(std::log2(max_length))) + 1;
+	*miplevels = 2;
+	data.resize(image_size);
+	memcpy(data.data(), pixels, (uint32_t)image_size);
+	stbi_image_free(pixels);
+}
+
 std::shared_ptr<render::texture>
 load_texture2d(const std::string &file)
 {
-	int width, height, channels;
 	std::vector<uint8_t> pixels_data;
-	stbi_uc* pixels = stbi_load(file.c_str(),
-		&width, &height, &channels, STBI_rgb_alpha);
-	if (pixels == nullptr) {
-		fprintf(stderr, "[resource] load texture:%s fail\n", file.c_str());
-		return nullptr;
-	}
-	size_t image_size = width * height * 4;
-	int max_length = std::max(width, height);
-	auto miplevels = (uint32_t)(std::floor(std::log2(max_length))) + 1;
-	pixels_data.resize(image_size);
-	memcpy(pixels_data.data(), pixels, (uint32_t)image_size);
-	stbi_image_free(pixels);
+	int width, height, miplevels;
+	load_tex_file(file, pixels_data, &width, &height, &miplevels);
 	auto tex = render::texture2d::create(width, height);
 	tex->setpixel(pixels_data);
 	tex->miplevels = miplevels;
+	tex->apply();
+	return std::shared_ptr<render::texture>(tex);
+}
+
+std::shared_ptr<render::texture>
+load_cubemap(const std::array<std::string, render::cubemap::FACE_COUNT> &pathes)
+{
+	static const std::array<render::cubemap::face, render::cubemap::FACE_COUNT> faces = {
+		render::cubemap::POSITIVE_X, render::cubemap::NEGATIVE_X,
+		render::cubemap::POSITIVE_Y, render::cubemap::NEGATIVE_Y,
+		render::cubemap::POSITIVE_Z, render::cubemap::NEGATIVE_Z
+	};
+	int width, height, miplevels;
+	std::vector<uint8_t> pixels_data;
+	load_tex_file(pathes[0], pixels_data, &width, &height, &miplevels);
+	auto *tex = render::cubemap::create(width, height);
+	tex->miplevels = miplevels;
+	tex->setpixel(faces[0], pixels_data);
+	for (int i = 1; i < render::cubemap::FACE_COUNT; i++) {
+		int w, h, mip;
+		load_tex_file(pathes[i], pixels_data, &w, &h, &mip);
+		assert(w == width);
+		assert(h == height);
+		tex->setpixel(faces[i], pixels_data);
+	}
 	tex->apply();
 	return std::shared_ptr<render::texture>(tex);
 }
@@ -100,9 +134,19 @@ load_material(const std::string &file)
 		auto n = params[i];
 		auto name = n["name"].as<std::string>();
 		auto type = n["type"].as<std::string>();
-		auto file = n["file"].as<std::string>();
 		if (type == "texture2d") {
+			auto file = n["file"].as<std::string>();
 			auto tex = load_texture2d(file);
+			m->set_texture(name, tex);
+		} else if (type == "cubemap") {
+			std::array<std::string, render::cubemap::FACE_COUNT> pathes;
+			pathes[0] = n["x+"].as<std::string>();
+			pathes[1] = n["x-"].as<std::string>();
+			pathes[2] = n["y+"].as<std::string>();
+			pathes[3] = n["y-"].as<std::string>();
+			pathes[4] = n["z+"].as<std::string>();
+			pathes[5] = n["z-"].as<std::string>();
+			auto tex = load_cubemap(pathes);
 			m->set_texture(name, tex);
 		}
 	}
