@@ -23,6 +23,10 @@
 namespace engine {
 namespace resource {
 
+static std::unordered_map<std::string, std::shared_ptr<render::material>> mat_pool;
+static std::unordered_map<std::string, std::shared_ptr<render::texture>> tex_pool;
+static std::unordered_map<std::string, std::shared_ptr<render::mesh>> mesh_pool;
+
 void
 init()
 {
@@ -57,14 +61,18 @@ load_tex_file(const std::string &file, std::vector<uint8_t> &data, int *w, int *
 std::shared_ptr<render::texture>
 load_texture2d(const std::string &file)
 {
+	auto &tex = tex_pool[file];
+	if (tex != nullptr)
+		return tex;
 	std::vector<uint8_t> pixels_data;
 	int width, height, miplevels;
 	load_tex_file(file, pixels_data, &width, &height, &miplevels);
-	auto tex = render::texture2d::create(width, height);
-	tex->setpixel(pixels_data);
-	tex->miplevels = miplevels;
-	tex->apply();
-	return std::shared_ptr<render::texture>(tex);
+	auto t = render::texture2d::create(width, height);
+	t->setpixel(pixels_data);
+	t->miplevels = miplevels;
+	t->apply();
+	tex.reset(t);
+	return tex;
 }
 
 std::shared_ptr<render::texture>
@@ -123,12 +131,15 @@ load_shader(const std::string &file)
 std::shared_ptr<render::material>
 load_material(const std::string &file)
 {
+	auto &mat = mat_pool[file];
+	if (mat != nullptr)
+		return mat;
 	YAML::Node root = YAML::LoadFile(file);
 	auto shader_file = root["shader_file"].as<std::string>();
 	std::cout << root["render_queue"].as<std::string>() << shader_file << std::endl;
 	auto shader = load_shader(shader_file);
 	auto *m = render::material::create(shader);
-	std::shared_ptr<render::material> mat(m);
+	mat.reset(m);
 	auto params = root["shader_params"];
 	for (int i = 0; i < params.size(); i++) {
 		auto n = params[i];
@@ -156,6 +167,9 @@ load_material(const std::string &file)
 std::shared_ptr<render::mesh>
 load_mesh(const std::string &file)
 {
+	auto &mesh_ptr = mesh_pool[file];
+	if (mesh_ptr != nullptr)
+		return mesh_ptr;
 	bool ret = false;
 	Assimp::Importer importer;
 	const aiScene* pScene = importer.ReadFile(
@@ -185,7 +199,8 @@ load_mesh(const std::string &file)
 		mesh->triangles.emplace_back(face->mIndices[2]);
 	}
 	mesh->set_dirty();
-	return std::shared_ptr<render::mesh>(mesh);
+	mesh_ptr.reset(mesh);
+	return mesh_ptr;
 }
 
 static void
@@ -209,6 +224,10 @@ parse_transform(transform *tf, YAML::Node n)
 	y = sn["y"].as<float>();
 	z = sn["z"].as<float>();
 	tf->scale = vector3f(x, y, z);
+
+	tf->local_position = tf->position;
+	tf->local_rotation = tf->rotation;
+	tf->local_scale = tf->scale;
 }
 
 static void
@@ -255,15 +274,17 @@ parse_lua(luacomponent *lua, YAML::Node n)
 }
 
 void
-load_level(const std::string &file, std::function<void(gameobject *)> add_go)
+load_level(const std::string &file, std::function<void(gameobject *, int)> add_go)
 {
 	YAML::Node root = YAML::LoadFile(file)["root"];
 	for (int i = 0; i < root.size(); i++) {
 		auto go_node = root[i]["gameobject"];
+		auto id = go_node["id"].as<int>();
+		auto parent = go_node["parent"].as<int>();
 		auto name = go_node["name"];
 		auto coms_node = go_node["components"];
-		auto go = new gameobject();
-		add_go(go);
+		auto go = new gameobject(id);
+		add_go(go, parent);
 		for (int j = 0; j < coms_node.size(); j++) {
 			auto com_node = coms_node[j];
 			for (auto it = com_node.begin(); it != com_node.end(); ++it) {

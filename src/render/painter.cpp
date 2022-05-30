@@ -49,8 +49,11 @@ painter::draw(camera *cam, const std::vector<draw_object> &drawlist)
 	if (surface_poll(surface) != 0)
 		return false;
 	forward_begin(forward);
-	for (auto &d:drawlist)
+	printf("draw list=====\n");
+	for (auto &d:drawlist) {
 		forward_tick(cam, ctx.get(), forward, d);
+		printf("draw+\n");
+	}
 	forward_end(forward);
 	return true;
 }

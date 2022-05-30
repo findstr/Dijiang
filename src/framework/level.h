@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include "gameobject.h"
 #include "components/camera.h"
 #include "render/draw_object.h"
@@ -11,13 +12,13 @@ namespace engine {
 class level {
 private:
 	std::string name;
-	std::vector<gameobject *> gobjects;
-	std::vector<gameobject *> adding;
+	std::unordered_map<gameobject::id_t, gameobject *>gobjects;
+	std::vector<std::tuple<gameobject *, int>> adding;
 public:
 	level(const std::string &path);
 	~level();
 	void tick(float delta);
-	void add_gameobject(gameobject *go);
+	void add_gameobject(gameobject *go, int parent);
 public:
 	static void load(const std::string &path);
 	static void tick_all(float delta);

@@ -360,6 +360,8 @@ update_uniformbuffer(const renderctx *ctx, vk_buffer *ub, camera *cam,  const dr
 	auto eye_dir = eye + cam->forward() * 5.0f;
 	auto up = cam->up();
 
+	std::cout << "update_uniform" << pos.x() << ":" << pos.y() << ":" << pos.z() << std::endl;
+
 	auto model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(pos.x(), pos.y(), pos.z()));
 	model = glm::rotate(model, glm::radians(angle), glm::vec3(axis.x(), axis.y(), axis.z()));

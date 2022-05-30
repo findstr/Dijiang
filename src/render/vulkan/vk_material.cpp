@@ -37,6 +37,8 @@ vk_material::set_shader(std::shared_ptr<render::shader> &s)
 		dsa.pSetLayouts = &desc_layout;
 		auto result = vkAllocateDescriptorSets(ctx->logicdevice,
 			&dsa, &desc_set[i]);
+		if (result != VK_SUCCESS)
+			printf("====:%d\n", result);
 		assert(result == VK_SUCCESS);
 	}
 

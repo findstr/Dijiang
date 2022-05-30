@@ -50,6 +50,9 @@ public:
 	inline vectorx<T, N> operator - () const;
 	inline vectorx<T, N> operator + (const vectorx<T, N> &a) const;
 	inline vectorx<T, N> operator - (const vectorx<T, N> &a) const;
+	inline vectorx<T, N> operator * (const vectorx<T, N> &a) const;
+	inline vectorx<T, N> operator / (const vectorx<T, N> &a) const;
+
 	inline vectorx<T, N> operator * (T a) const;
 	inline vectorx<T, N> operator / (T a) const;
 
@@ -206,6 +209,27 @@ inline vectorx<T, N> vectorx<T, N>::operator - (const vectorx<T, N> &a) const
 		r.e[i] = e[i] - a.e[i];
 	return r;
 }
+
+template<typename T, size_t N>
+inline vectorx<T, N> vectorx<T, N>::operator * (const vectorx<T, N> &a) const
+{
+	vectorx<T, N> r;
+	for (size_t i = 0; i < N; i++)
+		r.e[i] = e[i] * a.e[i];
+	return r;
+}
+
+template<typename T, size_t N>
+inline vectorx<T, N> vectorx<T, N>::operator / (const vectorx<T, N> &a) const
+{
+	vectorx<T, N> r;
+	for (size_t i = 0; i < N; i++)
+		r.e[i] = e[i] / a.e[i];
+	return r;
+}
+
+
+
 
 template<typename T, size_t N>
 inline vectorx<T, N> vectorx<T, N>::operator * (T a) const

@@ -1,3 +1,5 @@
+local quaternion = require "quaternion"
+local type = type
 local format = string.format
 local concat = table.concat
 local json = require "json"
@@ -16,8 +18,20 @@ local function tab(n)
 	end
 	return concat(buf)
 end
+local neg = "-"
+neg = neg:byte(1)
 local function print(level,...)
-	gprint(tab(level) .. concat({...}, " "))
+	local x = {...}
+	for i = 1, #x do
+		if type(x[i]) == "number" then
+			local s = tostring(x[i])
+			if s:byte(1) ~= neg then
+				s = "+" .. s
+			end
+			x[i] = s
+		end
+	end
+	gprint(tab(level) .. concat(x, " "))
 end
 
 local id = 1
@@ -37,10 +51,15 @@ end
 
 importer['MeshComponent'] = function(path)
 	local mesh = parse(path)
-	print(4, "-meshfilter:")
-	print(5,    "-submesh:")
-	print(6,        "mesh:", mesh.sub_meshes[1].obj_file_ref)
-	print(6,	"material:", mesh.sub_meshes[1].material)
+	print(4, "- meshfilter:")
+	print(5,    "- submesh:")
+	local m = mesh.sub_meshes[1].obj_file_ref
+	m = m:match("([^/]+)$")
+	print(6,        "mesh:", "asset/models/"..m)
+	print(4, "- meshrender:")
+	local mat = mesh.sub_meshes[1].material
+	local x = mat:match("(%w+).material.json$")
+	print(5,	"material: asset/material/"..x..".mat")
 end
 
 importer['MotorComponent'] = function(path)
@@ -55,31 +74,61 @@ importer['RigidBodyComponent'] = function(path)
 
 end
 
+print(1, "- gameobject:")
+print(2,     "id:", id)
+print(2,     "parent:", 0)
+print(2,     "name:", "Camera")
+print(2,     "components:")
+print(4,        "- transform:")
+print(5,            "position:")
+print(6,                "x:", 0)
+print(6,                "y:", 30)
+print(6,                "z:", -30)
+print(5,            "rotation:")
+print(6,                "x:", 30)
+print(6,                "y:", 0)
+print(6,                "z:", 0)
+print(5,            "scale:")
+print(6,                "x:", 1)
+print(6,                "y:", 1)
+print(6,                "z:", 1)
+print(4,        "- camera:")
+print(5,		"fov:", 60)
+print(5,		"aspect:", 1)
+print(5,		"clip_near_plane:", 1.0)
+print(5,		"clip_far_plane:", 100.0)
+print(4,        "- component.main:")
+print(5,		"speed:", 0.0)
 
 for k, obj in pairs(level.objects) do
-	print(1, "-gameobject:")
+	if obj.name ~= "Player" then
+	id = id + 1
+	print(1, "- gameobject:")
 	print(2,     "id:", id)
+	print(2,     "parent:", 0)
 	print(2,     "name:", obj.name)
 	print(2,     "components:")
-	print(4,        "-transform:")
+	print(4,        "- transform:")
 	print(5,            "position:")
 	print(6,                "x:", obj.transform.position.x)
-	print(6,                "y:", obj.transform.position.y)
-	print(6,                "z:", obj.transform.position.z)
+	print(6,                "y:", obj.transform.position.z)
+	print(6,                "z:", -obj.transform.position.y)
+	local rot = Quaternion.New(0, 0, 0, 1)
+	local angles = rot:ToEulerAngles()
+	angles.x = -90
 	print(5,            "rotation:")
-	print(6,                "x:", obj.transform.rotation.x or 0)
-	print(6,                "y:", obj.transform.rotation.y or 0)
-	print(6,                "z:", obj.transform.rotation.z or 0)
-	print(6,                "w:", obj.transform.rotation.w or 0)
+	print(6,                "x:", angles.x or 0)
+	print(6,                "y:", angles.z or 0)
+	print(6,                "z:", -angles.y or 0)
 	print(5,            "scale:")
 	print(6,                "x:", obj.transform.scale.x or 1)
-	print(6,                "y:", obj.transform.scale.y or 1)
-	print(6,                "z:", obj.transform.scale.z or 1)
-	print(6,                "w:", obj.transform.scale.w or 1)
+	print(6,                "y:", obj.transform.scale.z or 1)
+	print(6,                "z:", obj.transform.scale.y or 1)
 	local def = parse(obj.definition)
 	for i = 1, #def.components do
 		local com = parse(def.components[i])
 		importer[com.type_name](com.component)
 	end
-	id = id + 1
 end
+end
+

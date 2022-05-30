@@ -1,0 +1,17 @@
+render_queue : geometry
+shader_file: asset/shaders/shader
+shader_params:
+    -
+        name: tex
+        type: texture2d
+        file: asset/textures/objects/gold.tga
+    -
+        name: roughness
+        type: texture2d
+        file: asset/textures/objects/mr.tga
+    -
+        name: normal
+        type: texture2d
+        file: asset/textures/objects/n.tga
+
+

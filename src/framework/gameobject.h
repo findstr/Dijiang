@@ -12,12 +12,16 @@ class gameobject {
 public:
 	typedef unsigned int id_t;
 protected:
-	id_t	id = 0;
+	id_t	id_;
+	gameobject *parent;
 	std::vector<component *> components;
 public:
-	gameobject() {}
+	gameobject(int id);
 	~gameobject();
 	transform transform;
+	void set_parent(gameobject *go, bool keep_world = false);
+	constexpr gameobject *get_parent() const { return parent;}
+	constexpr id_t id() const { return id_; }
 public:
 	void add_component(component *);
 	component *get_component(const std::string &type);

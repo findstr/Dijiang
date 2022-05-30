@@ -1,15 +1,17 @@
 ---
 root:
     - gameobject:
+        id: +1
+        parent: +0
         name: Camera
         components:
                 - transform:
                     position:
                         x: +0
-                        y: +0
-                        z: -3
+                        y: +30
+                        z: -30
                     rotation:
-                        x: +0
+                        x: +30
                         y: +0
                         z: +0
                     scale:
@@ -17,55 +19,56 @@ root:
                         y: +1
                         z: +1
                 - camera:
-                        fov: +60
-                        aspect: +1
-                        clip_near_plane: +1.0
-                        clip_far_plane: +100.0
+                    fov: +60
+                    aspect: +1
+                    clip_near_plane: +1.0
+                    clip_far_plane: +100.0
                 - component.main:
-                        speed: +0.1
+                    speed: +0.0
     - gameobject:
-        name: Player
+        id: +2
+        parent: +0
+        name: Wall_1
         components:
                 - transform:
                     position:
-                        x: +0
-                        y: -1
-                        z: +0
+                        x: +1.94597
+                        y: +0
+                        z: +0.38554
                     rotation:
-                        x: +0
-                        y: +90
-                        z: +90
+                        x: -90
+                        y: +0.0
+                        z: -0.0
                     scale:
-                        x: +1
+                        x: +0.999993
                         y: +1
-                        z: +1
+                        z: +0.999993
                 - meshfilter:
                     - submesh:
-                        mesh: asset/models/viking_room.obj
+                        mesh: asset/models/wall.obj
                 - meshrender:
-                        material: asset/material/test.mat
-                - component.house:
-                        speed: +0.0
-
+                    material: asset/material/gold.mat
     - gameobject:
-        name: Skybox
+        id: +3
+        parent: +0
+        name: Wall_2
         components:
                 - transform:
                     position:
-                        x: +0
+                        x: -7.9951
                         y: +0
-                        z: +0
+                        z: +0.38554
                     rotation:
-                        x: +0
-                        y: +0
-                        z: +0
+                        x: -90
+                        y: +0.0
+                        z: -0.0
                     scale:
-                        x: +10
-                        y: +10
-                        z: +10
+                        x: +0.999918
+                        y: +1
+                        z: +0.999918
                 - meshfilter:
                     - submesh:
-                        mesh: asset/models/skybox.obj
+                        mesh: asset/models/wall.obj
                 - meshrender:
-                        material: asset/material/skybox.mat
+                    material: asset/material/gold.mat
 

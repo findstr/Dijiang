@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "level.h"
 #include "framework/components/meshfilter.h"
 #include "framework/components/meshrender.h"
@@ -11,27 +12,49 @@ level::level(const std::string &path)
 }
 level::~level()
 {
-	for (auto *go :  gobjects)
-		delete go;
+	for (auto &iter :  gobjects)
+		delete iter.second;
 }
 
 void
 level::tick(float delta)
 {
 	gobjects.reserve(gobjects.size() + adding.size());
-	for (auto *go : adding) {
+	for (auto &iter:gobjects) {
+		auto *go = iter.second;
+		auto *p = go->get_parent();
+		if (p == nullptr)
+			continue;
+		auto &trans = go->transform;
+		auto &ptrans = p->transform;
+		trans.position = ptrans.position + trans.local_position;
+		trans.rotation = ptrans.rotation * trans.local_rotation;
+		trans.scale = ptrans.scale * trans.local_scale;
+	}
+	for (auto &iter:gobjects)
+		iter.second->tick(delta);
+	for (auto &iter:adding) {
+		int parent = std::get<int>(iter);
+		auto *go = std::get<gameobject *>(iter);
+		if (parent != 0) {
+			auto p = gobjects[parent];
+			go->set_parent(p);
+		}
 		go->start();
-		gobjects.emplace_back(go);
+		auto ret = gobjects.insert({go->id(), go});
+		assert(ret.second == true);
+	}
+	for (auto &iter : adding) {
+		auto *go = std::get<gameobject *>(iter);
+		go->tick(delta);
 	}
 	adding.clear();
-	for (auto *go : gobjects)
-		go->tick(delta);
 }
 
 void
-level::add_gameobject(gameobject *go)
+level::add_gameobject(gameobject *go, int parent)
 {
-	adding.emplace_back(go);
+	adding.emplace_back(go, parent);
 }
 
 //////---- static level
@@ -43,8 +66,8 @@ level::load(const std::string &path)
 {
 	level *lv = new level(path);
 	levels.emplace_back(lv);
-	resource::load_level(path, [&lv](gameobject *go) {
-		lv->add_gameobject(go);
+	resource::load_level(path, [&lv](gameobject *go, int parent) {
+		lv->add_gameobject(go, parent);
 	});
 }
 
@@ -52,12 +75,14 @@ void
 level::cull(camera *cam, std::vector<draw_object> &list)
 {
 	for (auto &lv:levels) {
-		for (auto go:lv->gobjects) {
+		for (auto &iter:lv->gobjects) {
+			auto *go = iter.second;
 			auto mf = (meshfilter *)go->get_component("meshfilter");
 			auto mr = (meshrender *)go->get_component("meshrender");
 			if (mf == nullptr || mr == nullptr)
 				continue;
 			auto *mesh = mf->get_mesh();
+			assert(mesh != nullptr);
 			auto *material = mr->get_material();
 			list.emplace_back(go->transform, mesh, material);
 		}

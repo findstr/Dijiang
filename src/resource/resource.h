@@ -20,7 +20,7 @@ std::shared_ptr<render::texture> load_cubemap(
 std::shared_ptr<render::shader>  load_shader(const std::string &file);
 std::shared_ptr<render::material>load_material(const std::string &file);
 std::shared_ptr<render::mesh>    load_mesh(const std::string &file);
-void load_level(const std::string &file, std::function<void(gameobject *)> add_go);
+void load_level(const std::string &file, std::function<void(gameobject *, int)> add_go);
 
 }}
 

@@ -4,9 +4,9 @@ shader_params:
     -
         name: tex
         type: cubemap
-        x+: asset/textures/left.jpg
-        x-: asset/textures/right.jpg
-        y+: asset/textures/top.jpg
-        y-: asset/textures/top.jpg
-        z+: asset/textures/front.jpg
-        z-: asset/textures/back.jpg
+        x+: asset/textures/skybox/left.jpg
+        x-: asset/textures/skybox/right.jpg
+        y+: asset/textures/skybox/top.jpg
+        y-: asset/textures/skybox/top.jpg
+        z+: asset/textures/skybox/front.jpg
+        z-: asset/textures/skybox/back.jpg
