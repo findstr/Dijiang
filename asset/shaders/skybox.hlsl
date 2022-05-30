@@ -4,7 +4,7 @@ struct UBO {
 	float4x4 proj;
 };
 
-cbuffer ubo : register(b0) { UBO ubo; }
+cbuffer ubo { UBO ubo; }
 
 struct VSInput {
 	float3 inPosition : POSITION0;
@@ -29,8 +29,8 @@ VSOutput vert(VSInput input) {
 	return output;
 }
 
-TextureCube tex: register(t0);
-SamplerState tex_sampler: register(s0);
+TextureCube tex;
+SamplerState tex_sampler;
 
 float4 frag(VSOutput input) : SV_TARGET
 {
