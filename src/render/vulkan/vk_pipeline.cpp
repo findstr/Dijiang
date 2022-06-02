@@ -1,5 +1,6 @@
 #include <vector>
 #include "vertex.h"
+#include "vk_shader_variables.h"
 #include "vk_pipeline.h"
 #include "renderctx.h"
 
@@ -128,11 +129,28 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader)
 	dynamicState.dynamicStateCount = 2;
 	dynamicState.pDynamicStates = dynamicStates;
 
-	VkDescriptorSetLayout layout = shader->desc_set_layout();
+	VkDescriptorSetLayout shader_layout = shader->desc_set_layout();
+	VkDescriptorSetLayout uniform_layout = VK_NULL_HANDLE;
+	VkDescriptorSetLayoutBinding uniform_bindings = {
+		.binding = ENGINE_PER_DRAW_BINDING,
+		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		.descriptorCount = 1,
+		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+		.pImmutableSamplers = nullptr,
+	};
+	VkDescriptorSetLayoutCreateInfo ci{};
+	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	ci.bindingCount = 1;
+	ci.pBindings = &uniform_bindings;
+	auto result = vkCreateDescriptorSetLayout(vk_ctx->logicdevice, &ci, nullptr, &uniform_layout);
+	assert(result == VK_SUCCESS);
+
+	//TODO:
+	VkDescriptorSetLayout layouts[] = {shader_layout, uniform_layout};
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &layout;
+	pipelineLayoutInfo.setLayoutCount = 2;
+	pipelineLayoutInfo.pSetLayouts = layouts;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = 0;
 	if (vkCreatePipelineLayout(ctx->logicdevice, &pipelineLayoutInfo, nullptr, &pipelinelayout) != VK_SUCCESS)
@@ -177,8 +195,10 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader)
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
+	printf("create pipeline begin\n");
 	if (vkCreateGraphicsPipelines(ctx->logicdevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		return nullptr;
+	printf("create pipeline end\n");
 	return new vk_pipeline(pipeline, pipelinelayout);
 }
 

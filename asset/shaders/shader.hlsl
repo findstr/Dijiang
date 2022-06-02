@@ -1,10 +1,4 @@
-struct UBO {
-	float4x4 model;
-	float4x4 view;
-	float4x4 proj;
-};
-
-cbuffer ubo { UBO ubo; }
+#include "include/engine_variables.inc.hlsl"
 
 struct VSInput {
 	float3 inPosition : POSITION0;
@@ -18,9 +12,10 @@ struct VSOutput {
 	float2 fragTexCoord : TEXCOORD0;
 };
 
-VSOutput vert(VSInput input) {t st
+VSOutput vert(VSInput input) {
 	VSOutput output = (VSOutput)0;
-	output.pos = mul(ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPosition, 1.0))));
+	float4x4 mvp = mul(engine_matrix_proj, mul(engine_matrix_view, engine_matrix_model));
+	output.pos = mul(mvp, float4(input.inPosition, 1.0));
 	output.fragColor = input.inColor;
 	output.fragTexCoord = input.inTexCoord;
 	return output;

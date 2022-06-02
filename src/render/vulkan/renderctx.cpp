@@ -323,13 +323,15 @@ static VkDescriptorPool
 createDescriptorPool(VkDevice device)
 {
 	VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-	std::array<VkDescriptorPoolSize, 3> poolSize{};
+	std::array<VkDescriptorPoolSize, 4> poolSize{};
 	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSize[0].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 5);
+	poolSize[0].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 10);
 	poolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-	poolSize[1].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 5);
+	poolSize[1].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 10);
 	poolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	poolSize[2].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 5);
+	poolSize[2].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 10);
+	poolSize[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	poolSize[3].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 10);
 
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -497,12 +499,15 @@ renderctx_init(renderctx *ctx, const char *name, surface *s, int width, int heig
 	setup_debug_callback(ctx->instance,  &ext.dbgcallback);
 	surface_bind(s, ctx->instance, &ext.surface);
 	ctx->phydevice = pickPhysicalDevice(ctx->instance, ext.surface);
+	vkGetPhysicalDeviceProperties(ctx->phydevice, &ctx->properties);
 	ctx->logicdevice = createLogicalDevice(ctx->phydevice, ext.surface, &ctx->graphicsqueue, &ctx->presentqueue);
 	ctx->descriptorpool = createDescriptorPool(ctx->logicdevice);
 	ctx->allocator = vma_init(ctx->instance, ctx->phydevice, ctx->logicdevice);
 	ctx->swapchain = createSwapChain(ctx, ctx->phydevice, ctx->logicdevice, ext.surface, width, height);
 	ctx->commandpool = createCommandPool(ctx->phydevice, ctx->logicdevice, ext.surface);
 	CTX = ctx;
+	std::cout << "The GPU has a minimum buffer alignment of " <<
+		ctx->properties.limits.minUniformBufferOffsetAlignment << std::endl;
 	return 0;
 }
 

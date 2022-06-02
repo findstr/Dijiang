@@ -15,6 +15,7 @@
 #include "vk_buffer.h"
 #include "vk_shader.h"
 #include "vk_texture.h"
+#include "vk_uniform.h"
 #include "framesync.h"
 #include "forward.h"
 #include "vk_material.h"
@@ -49,11 +50,9 @@ struct forward {
 	VkRenderPass renderpass;
 	std::vector<framebuffer> framebuffers;
 	std::vector<renderframe> renderframes;
-	/*
-	VkPipelineLayout pipelinelayout;
-	VkPipeline pipeline;
-	*/
 	textureEx depthbuffer;
+	VkDescriptorSet desc_set = VK_NULL_HANDLE;
+	vk_uniform<render::ubo::per_draw> uniform_per_draw;
 };
 
 static VkFormat
@@ -344,12 +343,10 @@ forward_new(const renderctx *ctx)
 }
 
 static void
-update_uniformbuffer(const renderctx *ctx, vk_buffer *ub, camera *cam,  const draw_object &draw) {
+update_uniformbuffer(const renderctx *ctx, render::ubo::per_draw *ubo, camera *cam,  const draw_object &draw) {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-	render::UniformBufferObject ubo{};
 
 	vector3f axis;
 	auto pos = draw.transform.position;
@@ -360,25 +357,22 @@ update_uniformbuffer(const renderctx *ctx, vk_buffer *ub, camera *cam,  const dr
 	auto eye_dir = eye + cam->forward() * 5.0f;
 	auto up = cam->up();
 
-	std::cout << "update_uniform" << pos.x() << ":" << pos.y() << ":" << pos.z() << std::endl;
-
 	auto model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(pos.x(), pos.y(), pos.z()));
 	model = glm::rotate(model, glm::radians(angle), glm::vec3(axis.x(), axis.y(), axis.z()));
-	ubo.model = glm::scale(model, glm::vec3(scale.x(), scale.y(), scale.z()));
-	ubo.view = glm::lookAt(
+	ubo->model = glm::scale(model, glm::vec3(scale.x(), scale.y(), scale.z()));
+	ubo->view = glm::lookAt(
 			glm::vec3(eye.x(), eye.y(), eye.z()),
 			glm::vec3(eye_dir.x(), eye_dir.y(), eye_dir.z()),
 			glm::vec3(up.x(), up.y(), up.z()));
-	ubo.proj = glm::perspective(glm::radians(cam->fov), cam->aspect,
+	ubo->proj = glm::perspective(glm::radians(cam->fov), cam->aspect,
 		cam->clip_near_plane, cam->clip_far_plane);
-	ubo.proj[1][1] *= -1;
-	ub->upload(&ubo, sizeof(ubo));
+	ubo->proj[1][1] *= -1;
 }
 
 static int image_index;
 void
-forward_begin(forward *fw)
+forward_begin(forward *fw, int obj_count)
 {
 	auto &rf = fw->renderframes[fw->frameidx];
 	if (framesync_aquire(vk_ctx, rf.sync, &image_index)) {
@@ -408,7 +402,7 @@ forward_begin(forward *fw)
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
 	renderPassInfo.pClearValues = clearColor.data();
 	vkCmdBeginRenderPass(rf.cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
+	fw->desc_set = fw->uniform_per_draw.frame_begin(fw->frameidx, obj_count);
 }
 
 void
@@ -420,7 +414,7 @@ forward_end(forward *fw)
 		return ;
 	framesync_submit(vk_ctx, rf.sync, rf.cmdbuf, image_index);
 	fw->frameidx = (fw->frameidx + 1) % fw->renderframes.size();
-
+	fw->uniform_per_draw.frame_end();
 }
 
 
@@ -432,8 +426,12 @@ forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &
 	vk_material *mat = (vk_material *)draw.material;
 	mesh->flush();
 	auto descset = mat->desc_set[fw->frameidx];
+	render::ubo::per_draw *ubo;
+	uint32_t ubo_offset;
+	std::tie(ubo, ubo_offset) = fw->uniform_per_draw.per_begin();
+	update_uniformbuffer(ctx, ubo, cam, draw);
+	fw->uniform_per_draw.per_end();
 
-	update_uniformbuffer(ctx, mat->uniformbuffer.get(), cam, draw);
 
 	vkCmdBindPipeline(rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline->handle);
 
@@ -444,8 +442,18 @@ forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(rf.cmdbuf, 0, 1, vertexBuffers, offsets);
 	vkCmdBindIndexBuffer(rf.cmdbuf, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		mat->pipeline->layout, 0, 1, &descset, 0, nullptr);
+	vkCmdBindDescriptorSets(
+		rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		mat->pipeline->layout,
+		0,
+		1, &descset,
+		0, nullptr);
+	vkCmdBindDescriptorSets(
+		rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		mat->pipeline->layout,
+		1,
+		1, &fw->desc_set,
+		1, &ubo_offset);
 	vkCmdDrawIndexed(rf.cmdbuf, mesh->index_count, 1, 0, 0, 0);
 }
 

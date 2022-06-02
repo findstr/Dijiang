@@ -10,13 +10,13 @@
 
 namespace engine {
 namespace render {
+namespace ubo {
 
-struct UniformBufferObject {
+struct per_draw{
 	glm::mat4 model;
 	glm::mat4 view;
 	glm::mat4 proj;
 };
 
-
-}};
+}}};
 

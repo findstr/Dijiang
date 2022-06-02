@@ -2,6 +2,7 @@
 #include <string>
 #include "vk_object.h"
 #include "vk_shader.h"
+#include "vk_shader_variables.h"
 
 namespace engine {
 
@@ -41,21 +42,20 @@ vk_shader::analyze_uniform_buffers(
 	for (auto &ub : res.uniform_buffers) {
 		auto type = compiler.get_type(ub.type_id);
 		auto &var_name = compiler.get_name(ub.id);
-		auto &type_name = compiler.get_name(ub.base_type_id);
-
 		auto ubsize = compiler.get_declared_struct_size(type);
 
 		int set = compiler.get_decoration(ub.id, spv::DecorationDescriptorSet);
 		int binding = compiler.get_decoration(ub.id, spv::DecorationBinding);
-		bool dynamic = type_name.find("_dynamic") != std::string::npos;
-
+		if (var_name == ENGINE_PER_DRAW_NAME) {
+			assert(set == ENGINE_PER_DRAW_SET);
+			assert(binding == ENGINE_PER_DRAW_BINDING);
+			continue;
+		}
 		auto &bi = buffers.emplace_back();
 		bi.set = set;
 		bi.binding = binding;
 		bi.size = ubsize;
-		bi.type = dynamic ?
-			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
-			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		bi.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		bi.name = var_name;
 		var_stages[var_name] |= stageflags;
 	}
@@ -182,6 +182,7 @@ vk_shader::build_desc_set_layout()
 		dst.descriptorCount = 1;
 		dst.stageFlags = var_stages[iter.name];
 		dst.pImmutableSamplers = nullptr;
+		printf("shader buffer %s binding:%d\n", iter.name.c_str(), iter.binding);
 	}
 	for (auto iter:images) {
 		auto &dst = bindings.emplace_back();
@@ -190,6 +191,7 @@ vk_shader::build_desc_set_layout()
 		dst.descriptorCount = 1;
 		dst.stageFlags = var_stages[iter.name];
 		dst.pImmutableSamplers = nullptr;
+		printf("shader images %s binding:%d\n", iter.name.c_str(), iter.binding);
 	}
 	for (auto iter:samplers) {
 		auto &dst = bindings.emplace_back();
@@ -198,6 +200,7 @@ vk_shader::build_desc_set_layout()
 		dst.descriptorCount = 1;
 		dst.stageFlags = var_stages[iter.name];
 		dst.pImmutableSamplers = nullptr;
+		printf("shader sampler %s binding:%d\n", iter.name.c_str(), iter.binding);
 	}
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

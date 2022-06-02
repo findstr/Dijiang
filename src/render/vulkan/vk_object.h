@@ -31,6 +31,7 @@ namespace vulkan {
 	struct renderctx {
 		VkInstance instance = VK_NULL_HANDLE;
 		VkPhysicalDevice phydevice = VK_NULL_HANDLE;
+		VkPhysicalDeviceProperties properties;
 		VkDevice logicdevice = VK_NULL_HANDLE;
 		VkQueue graphicsqueue = VK_NULL_HANDLE;
 		VkQueue presentqueue = VK_NULL_HANDLE;

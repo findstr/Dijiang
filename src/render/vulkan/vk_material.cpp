@@ -17,8 +17,6 @@ namespace vulkan {
 vk_material::vk_material(std::shared_ptr<render::shader> &s)
 {
 	auto *ctx = renderctx_get();
-	uniformsize = sizeof(render::UniformBufferObject);
-	uniformbuffer.reset(new vk_buffer(vk_buffer::UNIFORM, uniformsize));
 	set_shader(s);
 }
 
@@ -40,32 +38,6 @@ vk_material::set_shader(std::shared_ptr<render::shader> &s)
 		if (result != VK_SUCCESS)
 			printf("====:%d\n", result);
 		assert(result == VK_SUCCESS);
-	}
-
-	auto *uniform = rs->find_buffer("ubo");
-	if (uniform) {
-		assert(uniform);
-		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = uniformbuffer->handle;
-		bufferInfo.offset = 0;
-		bufferInfo.range = uniformsize;
-
-		for (size_t i = 0; i < desc_set.size(); i++) {
-			std::array<VkWriteDescriptorSet, 1> descriptorWrite{};
-			descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite[0].dstSet = desc_set[i];
-			descriptorWrite[0].dstBinding = uniform->binding;
-			descriptorWrite[0].dstArrayElement = 0;
-			descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrite[0].descriptorCount = 1;
-			descriptorWrite[0].pBufferInfo = &bufferInfo;
-			descriptorWrite[0].pImageInfo = nullptr;
-			descriptorWrite[0].pTexelBufferView = nullptr;
-
-			vkUpdateDescriptorSets(ctx->logicdevice,
-				static_cast<uint32_t>(descriptorWrite.size()),
-				descriptorWrite.data(), 0, nullptr);
-		}
 	}
 	auto pass = std::shared_ptr<vk_pass>(new vk_pass());
 	set_renderpass(pass);

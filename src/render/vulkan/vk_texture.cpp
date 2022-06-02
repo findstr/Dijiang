@@ -53,10 +53,7 @@ vk_texture::sampler(const render::texture *tex)
 	samplerInfo.addressModeV = vk_address_v;
 	samplerInfo.addressModeW = vk_address_w;
 	if (tex->anisolevels > 0) {
-		int max;
-		VkPhysicalDeviceProperties prop{};
-		vkGetPhysicalDeviceProperties(vk_ctx->phydevice, &prop);
-		max = prop.limits.maxSamplerAnisotropy;
+		int max = vk_ctx->properties.limits.maxSamplerAnisotropy;
 		samplerInfo.anisotropyEnable = VK_TRUE;
 		samplerInfo.maxAnisotropy = std::min(max, tex->anisolevels);
 	}
