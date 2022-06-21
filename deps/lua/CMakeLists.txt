@@ -39,7 +39,15 @@ if(LUA_BUILD_AS_CXX)
     set_source_files_properties(${LUA_LIB_SRCS} "src/lua.c" "src/luac.c" PROPERTIES LANGUAGE CXX )
 endif()
 
-add_compile_options(-DLUA_USE_MACOSX -DLUA_USE_READLINE)
+if (CMAKE_HOST_WIN32)
+	MESSAGE(STATUS "LUA Win32")
+	set(CMAKE_C_FLAGS "-DLUA_BUILD_AS_DLL")
+elseif(CMAKE_HOST_APPLE)
+	add_compile_options(-DLUA_USE_MACOSX -DLUA_USE_READLINE)
+elseif(CMAKE_HOST_UNIX)
+
+endif()
+
 add_library(lua_internal INTERFACE)
 add_library(lua_include INTERFACE)
 
@@ -49,5 +57,4 @@ target_include_directories(lua_include INTERFACE
 )
 
 target_link_libraries(lua_internal INTERFACE lua_include)
-add_library(lua STATIC ${LUA_LIB_SRCS})
-
+add_library(lua SHARED ${LUA_LIB_SRCS})

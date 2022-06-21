@@ -262,7 +262,8 @@
 
 /*
 @@ LUA_API is a mark for all core API functions.
-@@ LUALIB_API is a mark for all auxiliary library functions.
+@@ LUALIB_API is a mark for all a 
+extern uxiliary library functions.
 @@ LUAMOD_API is a mark for all standard library opening functions.
 ** CHANGE them if you need to define those functions in some special way.
 ** For instance, if you want to create one Windows DLL with the core and
@@ -279,7 +280,7 @@
 
 #else				/* }{ */
 
-#define LUA_API		extern
+#define LUA_API		extern "C"
 
 #endif				/* } */
 

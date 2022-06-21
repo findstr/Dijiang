@@ -30,7 +30,6 @@ const std::vector<const char *> validationLayers = {
 
 const std::vector<const char *> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-	"VK_KHR_portability_subset",
 };
 
 #ifdef NDEBUG
@@ -148,10 +147,10 @@ create_instance(const char *name, int major, int minor, surface *s)
 	VkInstanceCreateInfo createinfo = {};
 	createinfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createinfo.pApplicationInfo = &appinfo;
-	createinfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+        //createinfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 
 	auto extensions = surface_required_extensions(s);
-	extensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+	//extensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 	createinfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 	createinfo.ppEnabledExtensionNames = extensions.data();
 	createinfo.enabledLayerCount = 0;

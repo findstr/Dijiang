@@ -62,6 +62,20 @@ gameobject::start()
 }
 
 void
+gameobject::pre_tick(float delta)
+{
+	for (auto c:components)
+		c->pre_tick(delta);
+}
+
+void
+gameobject::post_tick(float delta)
+{
+	for (auto c:components)
+		c->post_tick(delta);
+}
+
+void
 gameobject::tick(float delta)
 {
 	for (auto c:components)

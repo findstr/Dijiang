@@ -28,6 +28,8 @@ public:
 	void remove_component(const std::string &type);
 	void start();
 	void tick(float delta);
+	void pre_tick(float delta);
+	void post_tick(float delta);
 };
 
 }

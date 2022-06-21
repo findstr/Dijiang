@@ -1,6 +1,8 @@
+#include <chrono>
 #include "luavm.h"
 #include "resource/resource.h"
 #include "render/painter.h"
+#include "render/input.h"
 #include "framework/level.h"
 #include "framework/components/camera.h"
 #include "engine.h"
@@ -10,6 +12,7 @@ namespace engine {
 struct {
 	render::painter render;
 	std::vector<draw_object> drawlist;
+        std::chrono::time_point<std::chrono::high_resolution_clock> last_tick;
 } E;
 
 void
@@ -24,19 +27,16 @@ void
 run()
 {
 	level::load("asset/main.level");
-	/*
-	gameobject *go = new gameobject();
-	camera *cam = new camera(go);
-	go->add_component(cam);
-	cam->transform->position.x() = 0;
-	cam->transform->position.y() = 0;
-	cam->transform->position.z() = -10.0f;
-	cam->transform->rotation.identity();
-*/
 	auto cameras = camera::all_cameras();
 	bool running = true;
+	E.last_tick = std::chrono::high_resolution_clock::now();
 	while (running) {
-		level::tick_all(0.1f);
+		auto now = std::chrono::high_resolution_clock::now();
+		float delta = std::chrono::duration<float, std::chrono::seconds::period>(
+			now - E.last_tick).count();
+		E.last_tick = now;
+		input::update(delta);
+		level::tick_all(delta);
 		for (auto cam:cameras) {
 			E.drawlist.clear();
 			level::cull(cam, E.drawlist);

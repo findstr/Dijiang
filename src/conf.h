@@ -7,3 +7,8 @@ namespace conf {
 	const int VERSION_MINOR = 0;
 }}
 
+#ifdef __WINDOWS__ 
+#define ENGINE_API	__declspec(dllexport) 
+#else
+#define ENGINE_API
+#endif

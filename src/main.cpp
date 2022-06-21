@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include "render/painter.h"
 #include "resource/resource.h"

@@ -8,10 +8,10 @@ root:
                 - transform:
                     position:
                         x: +0
-                        y: +40
-                        z: -40
+                        y: +5
+                        z: 0
                     rotation:
-                        x: +45
+                        x: +0
                         y: +0
                         z: +0
                     scale:
@@ -19,7 +19,7 @@ root:
                         y: +1
                         z: +1
                 - camera:
-                    fov: +60
+                    fov: +45
                     aspect: +1
                     clip_near_plane: +1.0
                     clip_far_plane: +100.0

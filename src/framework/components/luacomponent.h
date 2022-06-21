@@ -10,7 +10,9 @@ class luacomponent: public component {
 private:
 	std::string type_;
 	int object_handle = -1;
-	int update_handle = -1;
+	int tick_handle = -1;
+	int pre_handle = -1;
+	int post_handle = -1;
 public:
 	luacomponent (gameobject *go, const std::string &type_);
 	~luacomponent();
@@ -19,6 +21,8 @@ public:
 	const std::string type() override { return type_; }
 	void start() override;
 	void tick(float delta) override;
+	void pre_tick(float delta) override;
+	void post_tick(float delta) override;
 };
 
 

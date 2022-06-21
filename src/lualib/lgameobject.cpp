@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#define LUA_LIB
 #include "lua.hpp"
 
 static int
@@ -11,7 +12,8 @@ ldestroy(lua_State *L)
 	return 0;
 };
 
-LUAMOD_API "C" int
+extern "C" 
+LUAMOD_API int
 luaopen_engine_gameobject(lua_State *L)
 {
 	luaL_Reg tbl[] = {

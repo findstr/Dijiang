@@ -3,6 +3,7 @@
 namespace engine {
 
 struct transform {
+	transform() {}
 	vector3f position;
 	quaternion rotation;
 	vector3f scale;

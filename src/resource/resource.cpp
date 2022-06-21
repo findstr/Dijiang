@@ -190,7 +190,7 @@ load_mesh(const std::string &file)
 		const aiVector3D pTexCoord = paiMesh->mTextureCoords[0][i];
 		mesh->vertices.emplace_back(pPos.x, pPos.y, pPos.z);
 		mesh->uv.emplace_back(pTexCoord.x, pTexCoord.y);
-		mesh->colors.emplace_back(0, 0, 0);
+		mesh->colors.emplace_back(0.f, 0.f, 0.f);
 	}
 	for (unsigned int i = 0; i < paiMesh->mNumFaces; i++) {
 		auto face = &paiMesh->mFaces[i];
@@ -218,7 +218,7 @@ parse_transform(transform *tf, YAML::Node n)
 	x = rn["x"].as<float>();
 	y = rn["y"].as<float>();
 	z = rn["z"].as<float>();
-	tf->rotation = quaternion::euler(x, y, z);
+	tf->rotation.from_euler(x, y, z);
 
 	x = sn["x"].as<float>();
 	y = sn["y"].as<float>();

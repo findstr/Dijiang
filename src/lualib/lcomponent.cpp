@@ -35,14 +35,14 @@ lsetlocalpos(lua_State *L)
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float z = luaL_checknumber(L, 4);
-	to_go(L, 1)->transform.position = vector3f(x, y, z);
+	to_go(L, 1)->transform.local_position = vector3f(x, y, z);
 	return 0;
 }
 
 static int
 lgetlocalpos(lua_State *L)
 {
-	vector3f pos = to_go(L, 1)->transform.position;
+	vector3f pos = to_go(L, 1)->transform.local_position;
 	lua_pushnumber(L, pos.x());
 	lua_pushnumber(L, pos.y());
 	lua_pushnumber(L, pos.z());
@@ -55,14 +55,14 @@ lsetlocalrot(lua_State *L)
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float z = luaL_checknumber(L, 4);
-	to_go(L, 1)->transform.rotation = quaternion::euler(x, y, z);
+	to_go(L, 1)->transform.local_rotation.from_euler(x, y, z);
 	return 0;
 }
 
 static int
 lgetlocalrot(lua_State *L)
 {
-	vector3f angles = to_go(L, 1)->transform.rotation.euler_angles();
+	vector3f angles = to_go(L, 1)->transform.local_rotation.to_euler();
 	lua_pushnumber(L, angles.x());
 	lua_pushnumber(L, angles.y());
 	lua_pushnumber(L, angles.z());
@@ -70,13 +70,76 @@ lgetlocalrot(lua_State *L)
 }
 
 static int
+lsetlocalquaternion(lua_State *L) 
+{
+	float x = luaL_checknumber(L, 2);
+	float y = luaL_checknumber(L, 3);
+	float z = luaL_checknumber(L, 4);
+	float w = luaL_checknumber(L, 5);
+	to_go(L, 1)->transform.local_rotation.x() = x;
+	to_go(L, 1)->transform.local_rotation.y() = y;
+	to_go(L, 1)->transform.local_rotation.z() = z;
+	to_go(L, 1)->transform.local_rotation.w() = w;
+	return 0;
+}
+
+static int
+lgetlocalquaternion(lua_State *L) 
+{
+	auto &quat = to_go(L, 1)->transform.local_rotation;
+	lua_pushnumber(L, quat.x());
+	lua_pushnumber(L, quat.y());
+	lua_pushnumber(L, quat.z());
+	lua_pushnumber(L, quat.w());
+	return 4;
+}
+
+static int
+lsetquaternion(lua_State *L) 
+{
+	auto &trans = to_go(L, 1)->transform;
+	quaternion &q= trans.rotation;
+	quaternion old = q;
+	q.x() = luaL_checknumber(L, 2);
+	q.y() = luaL_checknumber(L, 3);
+	q.z() = luaL_checknumber(L, 4);
+	q.w() = luaL_checknumber(L, 5);
+	trans.local_rotation =  q * old.inverse();
+	return 0;
+}
+
+static int
+lgetquaternion(lua_State *L) 
+{
+	auto &quat = to_go(L, 1)->transform.rotation;
+	lua_pushnumber(L, quat.x());
+	lua_pushnumber(L, quat.y());
+	lua_pushnumber(L, quat.z());
+	lua_pushnumber(L, quat.w());
+	return 4;
+}
+
+
+static int
 lrotate(lua_State *L)
 {
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float z = luaL_checknumber(L, 4);
-	quaternion q = quaternion::euler(x, y, z);
+	quaternion q;
+	q.from_euler(x, y, z);
 	to_go(L, 1)->transform.rotation *= q;
+	return 0;
+}
+
+static int
+lmove(lua_State *L)
+{
+	float x = luaL_checknumber(L, 2);
+	float y = luaL_checknumber(L, 3);
+	float z = luaL_checknumber(L, 4);
+	auto &trans = to_go(L, 1)->transform;
+	trans.position = trans.position + vector3f(x, y, z);
 	return 0;
 }
 
@@ -100,7 +163,7 @@ lgetlocalscale(lua_State *L)
 	return 3;
 }
 
-LUAMOD_API "C" int
+extern "C" LUAMOD_API int
 luaopen_engine_component(lua_State *L)
 {
 	luaL_Reg tbl[] = {
@@ -109,15 +172,22 @@ luaopen_engine_component(lua_State *L)
 		{"get_local_position", lgetlocalpos},
 		{"set_local_rotation", lsetlocalrot},
 		{"get_local_rotation", lgetlocalrot},
+		{"set_local_quaternion", lsetlocalquaternion},
+		{"get_local_quaternion", lgetlocalquaternion},
 		{"set_local_scale", lsetlocalscale},
 		{"get_local_scale", lgetlocalscale},
+		{"set_quaternion", lsetquaternion},
+		{"get_quaternion", lgetquaternion},
+
 		{"rotate", lrotate},
+		{"move", lmove},
 		{NULL, NULL},
 	};
 	luaL_checkversion(L);
 	luaL_newlibtable(L, tbl);
 	lua_pushliteral(L, "__go");
 	luaL_setfuncs(L, tbl, 1);
+
 	return 1;
 }
 

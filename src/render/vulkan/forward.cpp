@@ -1,4 +1,5 @@
 #include <vector>
+#include <chrono>
 #include <memory>
 
 #define GLM_FORCE_RADIANS
@@ -344,14 +345,10 @@ forward_new(const renderctx *ctx)
 
 static void
 update_uniformbuffer(const renderctx *ctx, render::ubo::per_draw *ubo, camera *cam,  const draw_object &draw) {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
 	vector3f axis;
 	auto pos = draw.transform.position;
 	auto scale = draw.transform.scale;
-	auto angle = draw.transform.rotation.axis_angle(&axis);
+	auto angle = draw.transform.rotation.to_axis_angle(&axis);
 
 	auto eye = cam->transform->position;
 	auto eye_dir = eye + cam->forward() * 5.0f;

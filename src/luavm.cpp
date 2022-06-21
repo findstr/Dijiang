@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <sstream>
+#include <assert.h>
 #include "lua.hpp"
 #include "luavm.h"
 
@@ -58,15 +60,15 @@ setlibpath(lua_State *L, const char *libpath, const char *clibpath)
 	lua_getfield(L, -2, "cpath");
 	cpath = luaL_checklstring(L, -1, &sz4);
 
-	need_sz = max(sz1, sz2) + max(sz3, sz4) + 1;
-	char new_path[need_sz];
-
-	snprintf(new_path, need_sz, "%s;%s", libpath, path);
-	lua_pushstring(L, new_path);
+	std::stringstream ss;
+	ss << libpath << ";" << path;
+	auto new_path = ss.str();
+	lua_pushlstring(L, new_path.c_str(), new_path.size());
 	lua_setfield(L, -4, "path");
 
-	snprintf(new_path, need_sz, "%s;%s", clibpath, cpath);
-	lua_pushstring(L, new_path);
+	ss << clibpath << ";" << cpath;
+	new_path = ss.str();
+	lua_pushlstring(L, new_path.c_str(), new_path.size());
 	lua_setfield(L, -4, "cpath");
 
 	//clear the stack
@@ -79,7 +81,11 @@ init()
 {
 	M.main = lua_newstate(lua_alloc, nullptr);
 	luaL_openlibs(M.main);
+#ifdef __WINDOWS__
+	setlibpath(M.main, "asset/lua/?.lua", "./?.dll");
+#else
 	setlibpath(M.main, "asset/lua/?.lua", "./?.so");
+#endif
 	M.ctx = lua_newthread(M.main);
 	M.ctx_handle = luaL_ref(M.main, LUA_REGISTRYINDEX);
 	lua_pushcfunction(M.ctx, ltraceback);
@@ -106,7 +112,7 @@ new_component(gameobject *go, const std::string &name)
 		lua_pushvalue(L, STK_REQUIRE);
 		lua_pushlstring(L, name.c_str(), name.size());
 		if (lua_pcall(L, 1, 1, STK_TRACE) != LUA_OK) {
-			fprintf(stderr, "[luavm] new_component:%s err:%s\n",
+			fprintf(stderr, "[luavm] new_component:%s error:%s\n",
 				name.c_str(), lua_tostring(L, -1));
 			lua_pop(L, 2);
 			return -1;

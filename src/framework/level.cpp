@@ -20,6 +20,20 @@ void
 level::tick(float delta)
 {
 	gobjects.reserve(gobjects.size() + adding.size());
+	for (auto &iter:adding) {
+		int parent = std::get<int>(iter);
+		auto *go = std::get<gameobject *>(iter);
+		if (parent != 0) {
+			auto p = gobjects[parent];
+			go->set_parent(p);
+		}
+		go->start();
+		auto ret = gobjects.insert({go->id(), go});
+		assert(ret.second == true);
+	}
+	adding.clear();
+	for (auto &iter:gobjects)
+		iter.second->pre_tick(delta);
 	for (auto &iter:gobjects) {
 		auto *go = iter.second;
 		auto *p = go->get_parent();
@@ -33,22 +47,8 @@ level::tick(float delta)
 	}
 	for (auto &iter:gobjects)
 		iter.second->tick(delta);
-	for (auto &iter:adding) {
-		int parent = std::get<int>(iter);
-		auto *go = std::get<gameobject *>(iter);
-		if (parent != 0) {
-			auto p = gobjects[parent];
-			go->set_parent(p);
-		}
-		go->start();
-		auto ret = gobjects.insert({go->id(), go});
-		assert(ret.second == true);
-	}
-	for (auto &iter : adding) {
-		auto *go = std::get<gameobject *>(iter);
-		go->tick(delta);
-	}
-	adding.clear();
+	for (auto &iter:gobjects)
+		iter.second->post_tick(delta);
 }
 
 void

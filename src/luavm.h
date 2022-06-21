@@ -2,7 +2,7 @@
 #include <string>
 namespace engine {
 
-struct gameobject;
+class gameobject;
 
 namespace luavm {
 

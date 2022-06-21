@@ -115,7 +115,7 @@ public:
 	std::tuple<T *, int> per_begin() {
 		void *data = main->buffer.map();
 		assert((offset + size_aligned) <= main->buffer.size);
-		return std::make_tuple((T*)((uint8_t *)data + offset), offset);
+		return std::make_tuple((T*)((uint8_t *)data + (int)offset), (int)offset);
 	}
 	void per_end() {
 		main->buffer.unmap(offset, size_aligned);
