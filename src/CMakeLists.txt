@@ -27,10 +27,9 @@ aux_source_directory(./math SOURCES)
 aux_source_directory(./utils SOURCES)
 aux_source_directory(./render SOURCES)
 aux_source_directory(./resource SOURCES)
-aux_source_directory(./framework SOURCES)
-aux_source_directory(./render/rhi SOURCES)
 aux_source_directory(./render/vulkan SOURCES)
-aux_source_directory(./framework/components SOURCES)
+aux_source_directory(./components SOURCES)
+aux_source_directory(./animation SOURCES)
 
 add_executable(${TARGET_NAME} ${SOURCES})
 

@@ -18,6 +18,8 @@ native_of(render::texture *tex)
 		return ((vk_cubemap *)tex)->native;
 	default:
 		assert(!"unsupport");
+		vk_texture *null = nullptr;
+		return *null;
 	}
 }
 

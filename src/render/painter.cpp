@@ -21,7 +21,6 @@
 #include "forward.h"
 #include "painter.h"
 
-
 namespace engine {
 namespace render {
 
@@ -30,10 +29,10 @@ using namespace engine::vulkan;
 void
 painter::init()
 {
-	surface = surface_new("帝江", 800, 600);
+	surface = surface_new("帝江", 1024, 768);
 	ctx = std::make_unique<renderctx>();
 	auto ctx_ptr = ctx.get();
-	renderctx_init(ctx_ptr, "帝江", surface, 800, 600);
+	renderctx_init(ctx_ptr, "帝江", surface, 1024, 768);
 	forward = forward_new(ctx_ptr);
 }
 

@@ -11,13 +11,14 @@ class material {
 public:
 	virtual ~material() {};
 public:
-	static material *create(std::shared_ptr<shader> &s);
+	static material *create(std::shared_ptr<shader> &s, bool ztest);
 	const shader *get_shader() const { return shader.get(); }
 	virtual void set_shader(std::shared_ptr<shader> &s) = 0;
 	virtual void set_texture(const std::string &name,
 		std::shared_ptr<render::texture> &tex) = 0;
 protected:
 	std::shared_ptr<shader> shader;
+	bool ztest;
 };
 
 }}

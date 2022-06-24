@@ -346,9 +346,9 @@ forward_new(const renderctx *ctx)
 static void
 update_uniformbuffer(const renderctx *ctx, render::ubo::per_draw *ubo, camera *cam,  const draw_object &draw) {
 	vector3f axis;
-	auto pos = draw.transform.position;
-	auto scale = draw.transform.scale;
-	auto angle = draw.transform.rotation.to_axis_angle(&axis);
+	auto &pos = draw.position;
+	auto &scale = draw.scale;
+	auto angle = draw.rotation.to_axis_angle(&axis);
 
 	auto eye = cam->transform->position;
 	auto eye_dir = eye + cam->forward() * 5.0f;

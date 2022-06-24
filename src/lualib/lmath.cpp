@@ -377,10 +377,10 @@ lquaternion(lua_State *L)
 		val.z() = get_value_field(L, 2, UP_Z);
 		val.w() = get_value_field(L, 2, UP_Z);
 	} else {
-		val.x() = luaL_checkinteger(L, 2);
-		val.y() = luaL_checkinteger(L, 3);
-		val.z() = luaL_checkinteger(L, 4);
-		val.w() = luaL_checkinteger(L, 5);
+		val.x() = luaL_checknumber(L, 2);
+		val.y() = luaL_checknumber(L, 3);
+		val.z() = luaL_checknumber(L, 4);
+		val.w() = luaL_checknumber(L, 5);
 	}
 	lua_pushinteger(L, id);
 	return 1;

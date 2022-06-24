@@ -7,8 +7,11 @@
 namespace engine {
 namespace vulkan {
 
+VkPrimitiveTopology vk_pipeline::primitive_topolgy =
+	VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
 vk_pipeline *
-vk_pipeline::create(vk_pass *pass, vk_shader *shader)
+vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 {
 	auto *ctx = renderctx_get();
 	VkPipeline pipeline = VK_NULL_HANDLE;
@@ -51,7 +54,7 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader)
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
 	inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssemblyState.topology = primitive_topolgy;
 	inputAssemblyState.primitiveRestartEnable = VK_FALSE;
 
 	VkViewport viewport = {};
@@ -158,7 +161,7 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader)
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencil.depthTestEnable = VK_TRUE;
+	depthStencil.depthTestEnable = ztest ? VK_TRUE : VK_FALSE;
 	depthStencil.depthWriteEnable = VK_TRUE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;

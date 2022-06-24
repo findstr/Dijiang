@@ -1,6 +1,7 @@
 #pragma once
 #include "vk_object.h"
 #include "render/cubemap.h"
+#include "vk_texture.h"
 #include "vk_buffer.h"
 
 namespace engine {

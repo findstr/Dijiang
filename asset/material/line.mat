@@ -1,0 +1,4 @@
+render_queue : geometry
+ztest: off
+shader_file: asset/shaders/line
+

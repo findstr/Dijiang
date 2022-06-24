@@ -324,19 +324,19 @@ createDescriptorPool(VkDevice device)
 	VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 	std::array<VkDescriptorPoolSize, 4> poolSize{};
 	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSize[0].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 10);
+	poolSize[0].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100);
 	poolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-	poolSize[1].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 10);
+	poolSize[1].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100);
 	poolSize[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	poolSize[2].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 10);
+	poolSize[2].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100);
 	poolSize[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	poolSize[3].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 10);
+	poolSize[3].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100);
 
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSize.size());
 	poolInfo.pPoolSizes = poolSize.data();
-	poolInfo.maxSets = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 5); //TODO:
+	poolInfo.maxSets = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100); //TODO:
 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 	return descriptorPool;

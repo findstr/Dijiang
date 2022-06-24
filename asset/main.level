@@ -8,18 +8,18 @@ root:
                 - transform:
                     position:
                         x: +0
-                        y: +5
-                        z: 0
+                        y: +1.5
+                        z: +2
                     rotation:
                         x: +0
-                        y: +0
+                        y: +180
                         z: +0
                     scale:
                         x: +1
                         y: +1
                         z: +1
                 - camera:
-                    fov: +45
+                    fov: +60
                     aspect: +1
                     clip_near_plane: +1.0
                     clip_far_plane: +100.0
@@ -27,6 +27,30 @@ root:
                     speed: +0.0
     - gameobject:
         id: +2
+        parent: +0
+        name: Player
+        components:
+                - transform:
+                    position:
+                        x: +0
+                        y: +0
+                        z: +0
+                    rotation:
+                        x: -90
+                        y: +0
+                        z: +0
+                    scale:
+                        x: +1
+                        y: +1
+                        z: +1
+                - skinrender:
+                    mesh: asset/models/robot.obj
+                    skin: asset/models/robot.skin
+                    material: asset/material/robot.mat
+                - animator:
+                    skeleton: asset/skeleton/avatar.skeleton
+    - gameobject:
+        id: +3
         parent: +0
         name: Wall_1
         components:
@@ -49,7 +73,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +3
+        id: +4
         parent: +0
         name: Wall_2
         components:
@@ -72,7 +96,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +4
+        id: +5
         parent: +0
         name: Wall_3
         components:
@@ -95,7 +119,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +5
+        id: +6
         parent: +0
         name: Wall_4
         components:
@@ -118,7 +142,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +6
+        id: +7
         parent: +0
         name: Wall_5
         components:
@@ -141,7 +165,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +7
+        id: +8
         parent: +0
         name: Wall_6
         components:
@@ -164,7 +188,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +8
+        id: +9
         parent: +0
         name: Wall_7
         components:
@@ -187,7 +211,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +9
+        id: +10
         parent: +0
         name: Wall_8
         components:
@@ -210,7 +234,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +10
+        id: +11
         parent: +0
         name: Wall_9
         components:
@@ -233,7 +257,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +11
+        id: +12
         parent: +0
         name: Wall_10
         components:
@@ -256,7 +280,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +12
+        id: +13
         parent: +0
         name: Wall_11
         components:
@@ -279,7 +303,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +13
+        id: +14
         parent: +0
         name: Wall_12
         components:
@@ -302,7 +326,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +14
+        id: +15
         parent: +0
         name: Wall_13
         components:
@@ -325,7 +349,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +15
+        id: +16
         parent: +0
         name: Wall_14
         components:
@@ -348,7 +372,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +16
+        id: +17
         parent: +0
         name: Wall_15
         components:
@@ -371,7 +395,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +17
+        id: +18
         parent: +0
         name: Wall_16
         components:
@@ -394,7 +418,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +18
+        id: +19
         parent: +0
         name: Wall_17
         components:
@@ -417,7 +441,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +19
+        id: +20
         parent: +0
         name: WallWithDoor_1
         components:
@@ -440,7 +464,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +20
+        id: +21
         parent: +0
         name: WallWithDoor_2
         components:
@@ -463,7 +487,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +21
+        id: +22
         parent: +0
         name: WallWithDoor_3
         components:
@@ -486,7 +510,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +22
+        id: +23
         parent: +0
         name: WallWithDoor_4
         components:
@@ -509,7 +533,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +23
+        id: +24
         parent: +0
         name: WallWithDoor_5
         components:
@@ -532,7 +556,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +24
+        id: +25
         parent: +0
         name: WallWithWindow_1
         components:
@@ -555,7 +579,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +25
+        id: +26
         parent: +0
         name: WallWithWindow_2
         components:
@@ -578,7 +602,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +26
+        id: +27
         parent: +0
         name: WallBlock_1
         components:
@@ -601,7 +625,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +27
+        id: +28
         parent: +0
         name: WallBlock_2
         components:
@@ -624,7 +648,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +28
+        id: +29
         parent: +0
         name: Stairs
         components:
@@ -647,7 +671,7 @@ root:
                 - meshrender:
                     material: asset/material/gold.mat
     - gameobject:
-        id: +29
+        id: +30
         parent: +0
         name: Ground
         components:
@@ -670,7 +694,7 @@ root:
                 - meshrender:
                     material: asset/material/white.mat
     - gameobject:
-        id: +30
+        id: +31
         parent: +0
         name: Fence
         components:
@@ -693,7 +717,7 @@ root:
                 - meshrender:
                     material: asset/material/silver.mat
     - gameobject:
-        id: +31
+        id: +32
         parent: +0
         name: Skybox
         components:

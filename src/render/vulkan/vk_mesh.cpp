@@ -81,15 +81,6 @@ vk_mesh::flush()
 }
 
 
-}
+}}
 
-namespace render {
-mesh *
-mesh::create()
-{
-	return new vulkan::vk_mesh();
-}
-}
-
-}
 

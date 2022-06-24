@@ -14,9 +14,10 @@ namespace engine {
 
 namespace vulkan {
 
-vk_material::vk_material(std::shared_ptr<render::shader> &s)
+vk_material::vk_material(std::shared_ptr<render::shader> &s, bool ztest)
 {
 	auto *ctx = renderctx_get();
+	this->ztest = ztest;
 	set_shader(s);
 }
 
@@ -40,7 +41,8 @@ vk_material::set_shader(std::shared_ptr<render::shader> &s)
 		assert(result == VK_SUCCESS);
 	}
 	auto pass = std::shared_ptr<vk_pass>(new vk_pass());
-	set_renderpass(pass);
+	renderpass = pass;
+	pipeline = std::unique_ptr<vk_pipeline>(vk_pipeline::create(pass.get(), (vk_shader *)shader.get(), ztest));
 }
 
 void
@@ -93,18 +95,6 @@ vk_material::set_renderpass(std::shared_ptr<vk_pass> &rp)
 }
 
 
-}
-
-namespace render {
-
-material *
-material::create(std::shared_ptr<class shader> &s)
-{
-	return new vulkan::vk_material(s);
-}
-
-}
-
-}
+}}
 
 

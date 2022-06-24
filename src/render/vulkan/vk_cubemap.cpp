@@ -29,24 +29,5 @@ vk_cubemap::apply()
 	native.gen_mipmap(this, FACE_COUNT);
 }
 
-}
-
-namespace render {
-
-cubemap *
-cubemap::create(int width, int height,
-	texture_format format,
-	bool linear, int miplevels)
-{
-	cubemap *tex = new vulkan::vk_cubemap();
-	tex->width_ = width;
-	tex->height_ = height;
-	tex->linear = false;
-	tex->miplevels = miplevels;
-	return tex;
-}
-
-}
-
-}
+}}
 

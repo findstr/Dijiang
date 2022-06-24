@@ -6,6 +6,10 @@
 
 namespace engine {
 
+constexpr float PI = 3.14159265358f;
+constexpr float DEG_TO_RAD = PI / 180.f;
+constexpr float RAD_TO_DEG = 180.f / PI;
+
 using vector2i = Eigen::Vector2i;
 using vector4f = Eigen::Vector4f;
 
@@ -91,25 +95,33 @@ struct vector3f : public Eigen::Vector3f {
 
 struct quaternion : public Eigen::Quaternionf {
 	quaternion() : Eigen::Quaternionf() {}
+	quaternion(float x, float y, float z, float w) : Eigen::Quaternionf(w,x,y,z) {}
 	quaternion(const Eigen::Quaternionf &q) : Eigen::Quaternionf(q) {}
 	quaternion(const quaternion &q) : Eigen::Quaternionf(q) {}
 	quaternion &from_euler(float x, float y, float z) {
-		*this = angleaxisf(x, vector3f::UnitX()) *
-			angleaxisf(y, vector3f::UnitY()) *
-			angleaxisf(z, vector3f::UnitZ());
+		*this = angleaxisf(x * DEG_TO_RAD, vector3f::UnitX()) *
+			angleaxisf(y * DEG_TO_RAD, vector3f::UnitY()) *
+			angleaxisf(z * DEG_TO_RAD, vector3f::UnitZ());
 		return *this;
 	}
 	quaternion &from_axis_angle(const vector3f &axis, float angle) {
-		*this = Eigen::Quaternionf(Eigen::AngleAxisf(angle, axis));
+		*this = Eigen::Quaternionf(Eigen::AngleAxisf(angle * DEG_TO_RAD, axis));
 		return *this;
 	}
 	vector3f to_euler() const {
-		return toRotationMatrix().eulerAngles(0, 1, 2);
+		vector3f result = toRotationMatrix().eulerAngles(0, 1, 2);
+		return result * RAD_TO_DEG;
 	}
 	float to_axis_angle(vector3f *axis) const {
 		Eigen::AngleAxisf angle(toRotationMatrix());
 		*axis = angle.axis();
-		return angle.angle();
+		return angle.angle() * RAD_TO_DEG;
+	}
+	vector3f operator *(const vector3f &v) const {
+		return (vector3f)((Eigen::Quaternionf)(*this) * v);
+	}
+	quaternion operator *(const quaternion &q) const {
+		return (quaternion)((Eigen::Quaternionf)(*this) * q);
 	}
 	static quaternion look_at(const vector3f &forward, const vector3f up = vector3f::up()) {
 		Eigen::Matrix3f rot;
@@ -128,10 +140,12 @@ struct quaternion : public Eigen::Quaternionf {
 
 		return Eigen::Quaternionf(rot);
 	}
+	static quaternion identity() {
+		return Identity();
+	}
 };
 
 
-constexpr float PI = 3.14159265358f;
 
 }
 

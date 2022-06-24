@@ -7,6 +7,6 @@ shader_params:
         x+: asset/textures/skybox/left.jpg
         x-: asset/textures/skybox/right.jpg
         y+: asset/textures/skybox/top.jpg
-        y-: asset/textures/skybox/top.jpg
+        y-: asset/textures/skybox/bottom.jpg
         z+: asset/textures/skybox/front.jpg
         z-: asset/textures/skybox/back.jpg

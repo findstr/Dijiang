@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <string>
 #include <memory>
+#include <fstream>
 #include <iostream>
 #include <unordered_map>
 
@@ -11,10 +12,12 @@
 #include "yaml-cpp/yaml.h"
 #include "utils/file.h"
 #include "stb_image.h"
-#include "framework/components/meshfilter.h"
-#include "framework/components/meshrender.h"
-#include "framework/components/camera.h"
-#include "framework/components/luacomponent.h"
+#include "components/meshfilter.h"
+#include "components/meshrender.h"
+#include "components/camera.h"
+#include "components/animator.h"
+#include "components/skinrender.h"
+#include "components/luacomponent.h"
 #include "render/texture2d.h"
 #include "render/cubemap.h"
 #include "resource.h"
@@ -135,10 +138,13 @@ load_material(const std::string &file)
 	if (mat != nullptr)
 		return mat;
 	YAML::Node root = YAML::LoadFile(file);
+	bool ztest = true;
+	if (root["ztest"])
+		ztest = root["ztest"].as<std::string>() == "on";
 	auto shader_file = root["shader_file"].as<std::string>();
 	std::cout << root["render_queue"].as<std::string>() << shader_file << std::endl;
 	auto shader = load_shader(shader_file);
-	auto *m = render::material::create(shader);
+	auto *m = render::material::create(shader, ztest);
 	mat.reset(m);
 	auto params = root["shader_params"];
 	for (int i = 0; i < params.size(); i++) {
@@ -176,8 +182,7 @@ load_mesh(const std::string &file)
 		file.c_str(),
 		aiProcess_Triangulate |
 		aiProcess_FlipUVs |
-		aiProcess_GenSmoothNormals |
-		aiProcess_JoinIdenticalVertices);
+		aiProcess_GenSmoothNormals);
 	if (pScene == nullptr)
 		return std::shared_ptr<render::mesh>(nullptr);
 	const aiMesh* paiMesh = pScene->mMeshes[0];
@@ -203,6 +208,80 @@ load_mesh(const std::string &file)
 	return mesh_ptr;
 }
 
+static inline vector3f
+parse_vector3f(YAML::Node &n) 
+{
+	float x = n['x'].as<float>();
+	float y = n['y'].as<float>();
+	float z = n['z'].as<float>();
+	return vector3f(x, y, z);
+}
+
+static inline quaternion
+parse_euler(YAML::Node &n) 
+{
+	quaternion q;
+	float x = n['x'].as<float>();
+	float y = n['y'].as<float>();
+	float z = n['z'].as<float>();
+	q.from_euler(x, y, z);
+	return q;
+}
+
+static quaternion
+parse_quaternion(YAML::Node &n) 
+{
+	float x = n['x'].as<float>();
+	float y = n['y'].as<float>();
+	float z = n['z'].as<float>();
+	float w = n['w'].as<float>();
+	return quaternion(x, y, z, w);
+}
+
+static matrix4f
+parse_matrix(YAML::Node &n) 
+{
+	matrix4f mat;
+	mat.setZero();
+	for (auto it = n.begin(); it != n.end(); ++it) {
+		auto key = it->first.as<std::string>();
+		auto val = it->second.as<float>();
+		int id = strtoul(key.c_str() + 1, nullptr, 10);
+		int x = id % 4;
+		int y = id / 4;
+		mat(y, x) = val;
+	}
+	return mat;
+}
+
+std::shared_ptr<animation::skeleton>
+load_skeleton(const std::string &file) 
+{
+	std::shared_ptr<animation::skeleton> skeleton(new animation::skeleton());
+	auto *sk = skeleton.get();
+	YAML::Node root = YAML::LoadFile(file)["skeleton"];
+	for (int i = 0; i < root.size(); i++) {
+		animation::skeleton::bone bone;
+		auto bone_node = root[i]["bone"];
+		bone.id = bone_node["id"].as<int>();
+		bone.name = bone_node["name"].as<std::string>();
+		bone.parent = bone_node["parent"].as<int>();
+
+		auto pn = bone_node["position"];
+		auto rn = bone_node["rotation"];
+		auto sn = bone_node["scale"];
+		auto tpose = bone_node["tpose"];
+		bone.position = parse_vector3f(pn);
+		bone.rotation = parse_quaternion(rn);
+		bone.scale = parse_vector3f(sn);
+
+		bone.tpose_matrix = parse_matrix(tpose);
+		sk->add_bone(bone);
+	}
+	std::cout << "eof" << std::endl;
+	return skeleton;
+}
+
 static void
 parse_transform(transform *tf, YAML::Node n)
 {
@@ -210,20 +289,14 @@ parse_transform(transform *tf, YAML::Node n)
 	auto rn = n["rotation"];
 	auto sn = n["scale"];
 
-	float x = pn["x"].as<float>();
-	float y = pn["y"].as<float>();
-	float z = pn["z"].as<float>();
-	tf->position = vector3f(x, y, z);
+	tf->position = parse_vector3f(pn);
 
-	x = rn["x"].as<float>();
-	y = rn["y"].as<float>();
-	z = rn["z"].as<float>();
+	float x = rn["x"].as<float>();
+	float y = rn["y"].as<float>();
+	float z = rn["z"].as<float>();
 	tf->rotation.from_euler(x, y, z);
 
-	x = sn["x"].as<float>();
-	y = sn["y"].as<float>();
-	z = sn["z"].as<float>();
-	tf->scale = vector3f(x, y, z);
+	tf->scale = parse_vector3f(sn);
 
 	tf->local_position = tf->position;
 	tf->local_rotation = tf->rotation;
@@ -258,6 +331,49 @@ parse_camera(camera *cam, YAML::Node n)
 }
 
 static void
+parse_animator(animator *ani, YAML::Node n)
+{
+	auto skl = load_skeleton(n["skeleton"].as<std::string>());
+	ani->set_skeleton(skl);
+}
+
+static void
+parse_skinrender(skinrender *sr, YAML::Node n) 
+{
+	auto mesh = load_mesh(n["mesh"].as<std::string>());
+	auto mat = load_material(n["material"].as<std::string>());
+	std::ifstream input_file(n["skin"].as<std::string>());
+	auto *m = mesh.get();
+	m->bone_weights.clear();
+	std::string line;
+	std::getline(input_file, line);
+	int count = std::strtoul(line.c_str(), nullptr, 0);
+	for (int i = 0; i < count; i++) {
+		int j;
+		render::mesh::bone_weight bone_weight;
+		std::getline(input_file, line);
+		char *p = (char *)line.c_str();
+		for (j = 0, p = std::strtok(p, ","); p && j < 4; j++, p = std::strtok(nullptr, ",")) {
+			int index;
+			float weight;
+			int n = sscanf(p, "%d:%f", &index, &weight);
+			assert(n == 2);
+			bone_weight.index[j] = index;
+			bone_weight.weight[j] = weight;
+		}
+		while (j < 4) {
+			bone_weight.index[j] = 0;
+			bone_weight.weight[j] = 0;
+			++j;
+		}
+		m->bone_weights.emplace_back(bone_weight);
+	}
+	assert(m->bone_weights.size() == m->vertices.size());
+	sr->set_mesh(mesh);
+	sr->set_material(mat);
+}
+
+static void
 parse_lua(luacomponent *lua, YAML::Node n)
 {
 	for (auto it = n.begin(); it != n.end(); ++it) {
@@ -281,9 +397,9 @@ load_level(const std::string &file, std::function<void(gameobject *, int)> add_g
 		auto go_node = root[i]["gameobject"];
 		auto id = go_node["id"].as<int>();
 		auto parent = go_node["parent"].as<int>();
-		auto name = go_node["name"];
+		auto name = go_node["name"].as<std::string>();
 		auto coms_node = go_node["components"];
-		auto go = new gameobject(id);
+		auto go = new gameobject(id, name);
 		add_go(go, parent);
 		for (int j = 0; j < coms_node.size(); j++) {
 			auto com_node = coms_node[j];
@@ -303,6 +419,14 @@ load_level(const std::string &file, std::function<void(gameobject *, int)> add_g
 					auto cam = new camera(go);
 					go->add_component(cam);
 					parse_camera(cam, it->second);
+				} else if (type == "animator") {
+					auto *ani = new animator(go);
+					go->add_component(ani);
+					parse_animator(ani, it->second);
+				} else if (type == "skinrender") {
+					auto *sr = new skinrender(go);
+					go->add_component(sr);
+					parse_skinrender(sr, it->second);
 				} else {
 					auto lc = new luacomponent(go, type);
 					go->add_component(lc);

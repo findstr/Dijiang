@@ -1,0 +1,15 @@
+render_queue : geometry
+shader_file: asset/shaders/shader
+shader_params:
+    -
+        name: tex
+        type: texture2d
+        file: asset/textures/robot/xiaobairen1k_BaseColor.tga
+    -
+        name: roughness
+        type: texture2d
+        file: asset/textures/robot/xiaobairen1k_OcclusionRoughnessMetallic.tga
+    -
+        name: normal
+        type: texture2d
+        file: asset/textures/robot/xiaobairen1k_Normal.tga

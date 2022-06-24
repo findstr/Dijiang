@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "math/math.h"
-#include "framework/gameobject.h"
+#include "gameobject.h"
 #define LUA_LIB
 #include "lua.hpp"
 

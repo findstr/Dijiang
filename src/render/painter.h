@@ -7,7 +7,7 @@
 #include "render/material.h"
 #include "render/draw_object.h"
 #include "render/vulkan/renderctx.h"
-#include "framework/components/camera.h"
+#include "components/camera.h"
 
 namespace engine {
 namespace render {

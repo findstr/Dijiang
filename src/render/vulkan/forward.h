@@ -4,7 +4,7 @@
 #include "mesh.h"
 #include "material.h"
 #include "render/draw_object.h"
-#include "framework/components/camera.h"
+#include "components/camera.h"
 namespace engine {
 namespace vulkan {
 

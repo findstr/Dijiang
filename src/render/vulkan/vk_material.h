@@ -10,7 +10,7 @@ namespace vulkan {
 
 class vk_material : public render::material {
 public:
-	vk_material(std::shared_ptr<render::shader> &s);
+	vk_material(std::shared_ptr<render::shader> &s, bool ztest);
 	~vk_material() override {}
 	void set_shader(std::shared_ptr<render::shader> &s) override;
 	void set_texture(const std::string &name, std::shared_ptr<render::texture> &tex) override;

@@ -28,8 +28,8 @@ function M:pre_tick(delta)
 end
 
 function M:tick(delta)
-	local speed = 10.0
-	local rot_speed = 10.0
+	local speed = 300.0 
+	local rot_speed = 50.0
 	local touch_count = input.touch_count()
 	if touch_count > 0 then
 		local stk<close> = mathx.begin()
@@ -60,10 +60,11 @@ function M:tick(delta)
 		end
 	end
 	if input.get_key(input.A) == "down" then
-		delta = -1 * delta
+		delta = delta
 		component.move(self,  delta * camera_right.x, delta * camera_right.y, delta * camera_right.z)
 	end
 	if input.get_key(input.D) == "down" then
+		delta = -1 * delta
 		component.move(self,  delta * camera_right.x, delta * camera_right.y, delta * camera_right.z)
 	end
 	if input.get_key(input.W) == "down" then
