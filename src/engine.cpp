@@ -29,7 +29,6 @@ void
 run()
 {
 	level::load("asset/main.level");
-	//resource::load_skeleton("asset/avatar.skeleton");
 	auto cameras = camera::all_cameras();
 	bool running = true;
 	E.last_tick = std::chrono::high_resolution_clock::now();

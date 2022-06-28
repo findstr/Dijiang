@@ -343,6 +343,19 @@ forward_new(const renderctx *ctx)
 	return fw;
 }
 
+static glm::mat4
+to_mat4(const matrix4f &m) 
+{
+	glm::mat4 result;
+	auto &source = m;
+	for (size_t i = 0; i < 4; ++i) {
+		for (size_t j = 0; j < 4; ++j) {
+			result[i][j] = source(j, i);
+		}
+	}
+	return result;
+}
+
 static void
 update_uniformbuffer(const renderctx *ctx, render::ubo::per_draw *ubo, camera *cam,  const draw_object &draw) {
 	vector3f axis;
@@ -357,7 +370,8 @@ update_uniformbuffer(const renderctx *ctx, render::ubo::per_draw *ubo, camera *c
 	auto model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(pos.x(), pos.y(), pos.z()));
 	model = glm::rotate(model, glm::radians(angle), glm::vec3(axis.x(), axis.y(), axis.z()));
-	ubo->model = glm::scale(model, glm::vec3(scale.x(), scale.y(), scale.z()));
+	ubo->model = to_mat4(matrix4f::trs(draw.position, draw.rotation, draw.scale));
+	glm::mat x = glm::scale(model, glm::vec3(scale.x(), scale.y(), scale.z()));
 	ubo->view = glm::lookAt(
 			glm::vec3(eye.x(), eye.y(), eye.z()),
 			glm::vec3(eye_dir.x(), eye_dir.y(), eye_dir.z()),
@@ -365,6 +379,10 @@ update_uniformbuffer(const renderctx *ctx, render::ubo::per_draw *ubo, camera *c
 	ubo->proj = glm::perspective(glm::radians(cam->fov), cam->aspect,
 		cam->clip_near_plane, cam->clip_far_plane);
 	ubo->proj[1][1] *= -1;
+	int bone_count = std::min(draw.skeleton_pose.size(), ubo->skeleton_pose.size());
+	for (int k = 0; k < bone_count; k++) {
+		ubo->skeleton_pose[k] = to_mat4(draw.skeleton_pose[k]);
+	}
 }
 
 static int image_index;

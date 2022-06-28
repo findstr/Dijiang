@@ -3,6 +3,7 @@
 #include "components/meshfilter.h"
 #include "components/meshrender.h"
 #include "components/skinrender.h"
+#include "components/animator.h"
 #include "resource/resource.h"
 
 namespace engine {
@@ -88,11 +89,18 @@ level::cull(camera *cam, std::vector<draw_object> &list)
 			if (sr != nullptr) {
 				mesh = sr->get_mesh();
 				material = sr->get_material();
+				auto *ani = (animator *)go->get_component("animator");
+				if (ani) {
+					auto &pose = ani->get_current_pose();
+					list.emplace_back(go->transform, mesh, material, pose);
+				} else {
+					list.emplace_back(go->transform, mesh, material);
+				}
 			} else {
 				mesh = mf->get_mesh();
 				material = mr->get_material();
+				list.emplace_back(go->transform, mesh, material);
 			}
-			list.emplace_back(go->transform, mesh, material);
 		}
 	}
 }

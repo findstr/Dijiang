@@ -241,8 +241,7 @@ parse_quaternion(YAML::Node &n)
 static matrix4f
 parse_matrix(YAML::Node &n) 
 {
-	matrix4f mat;
-	mat.setZero();
+	matrix4f mat = matrix4f::identity();
 	for (auto it = n.begin(); it != n.end(); ++it) {
 		auto key = it->first.as<std::string>();
 		auto val = it->second.as<float>();
@@ -280,6 +279,48 @@ load_skeleton(const std::string &file)
 	}
 	std::cout << "eof" << std::endl;
 	return skeleton;
+}
+
+std::shared_ptr<animation::clip>
+load_animation_clip(const std::string &file) 
+{
+	int i, n;
+	int frame_count;
+	int bone_count;
+	std::string line;
+	std::ifstream input_file(file);
+	std::getline(input_file, line);
+	n = sscanf(line.c_str(), "frame_count:%d", &frame_count);
+	assert(n == 1);
+	std::getline(input_file, line);
+	n = sscanf(line.c_str(), "bone_count:%d", &bone_count);
+	assert(n == 1);
+	std::getline(input_file, line);
+	auto *clip = new animation::clip(); 
+	std::shared_ptr<animation::clip> clip_ptr(clip);
+	clip->bone_count = bone_count;
+	clip->bone_id.reserve(bone_count);
+	char *p = (char *)line.c_str();
+	for (i = 0, p = std::strtok(p, ","); p && i < bone_count; i++, p = std::strtok(nullptr, ",")) {
+		clip->bone_id.emplace_back(strtoul(p, nullptr, 10));
+	}
+	for (int fi = 0; fi < frame_count; fi++) {
+		std::getline(input_file, line);
+		animation::clip::frame frame;
+		p = (char *)line.c_str();
+		for (i = 0, p = std::strtok(p, ","); p && i < bone_count; i++, p = std::strtok(nullptr, ",")) {
+			animation::clip::bone_pose bone;
+			n = sscanf(p, "%f:%f:%f&%f:%f:%f&%f:%f:%f:%f", 
+				&bone.position.x(), &bone.position.y(), &bone.position.z(), 
+				&bone.scale.x(), &bone.scale.y(), &bone.scale.z(),
+				&bone.rotation.x(), &bone.rotation.y(), &bone.rotation.z(), &bone.rotation.w());
+			assert(n == 10);
+			auto rot = bone.rotation.normalized();
+			frame.bone_poses.emplace_back(bone);
+		}
+		clip->frames.emplace_back(std::move(frame));
+	}
+	return clip_ptr;
 }
 
 static void

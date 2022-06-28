@@ -11,6 +11,7 @@ vk_mesh::upload_vertex(std::unique_ptr<vk_buffer> &buf)
 	vk_buffer *vk_buf;
 	bool hasuv = uv.size() >= vertices.size();
 	bool hascolor = colors.size() >= vertices.size();
+	bool isskin = bone_weights.size() > 0;
 	size_t vertex_size = render::vertex_type::size();
 	VkDeviceSize size = vertex_size * sizeof(float) * vertices.size();
 	vk_buffer staging(vk_buffer::STAGING, size);
@@ -19,6 +20,8 @@ vk_mesh::upload_vertex(std::unique_ptr<vk_buffer> &buf)
 	render::vertex_type t_pos = render::vertex_type::POSITION;
 	render::vertex_type t_uv = render::vertex_type::TEXCOORD;
 	render::vertex_type t_color = render::vertex_type::COLOR;
+	render::vertex_type t_indices = render::vertex_type::BLENDINDICES;
+	render::vertex_type t_weights = render::vertex_type::BLENDWEIGHT;
 
 	for (int i = 0; i < vertices.size(); i++) {
 		auto *p = &data[t_pos.offset()];
@@ -35,6 +38,15 @@ vk_mesh::upload_vertex(std::unique_ptr<vk_buffer> &buf)
 			p[0] = colors[i].x();
 			p[1] = colors[i].y();
 			p[2] = colors[i].z();
+		}
+		if (isskin) {
+			int j;
+			uint32_t *indices = (uint32_t *)&data[t_indices.offset()];
+			auto *weights = &data[t_weights.offset()];
+			for (j = 0; j < 4; j++) {
+				indices[j] =  bone_weights[i].index[j];
+				weights[j] = bone_weights[i].weight[j];
+			}
 		}
 		data += vertex_size;
 	}

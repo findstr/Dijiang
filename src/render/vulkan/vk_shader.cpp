@@ -92,7 +92,9 @@ name_to_vertex_type(const std::string &name)
 	static std::tuple<std::string, render::vertex_type> name_to_type[] = {
 		{"in.var.POSITION0", render::vertex_type::POSITION},
 		{"in.var.TEXCOORD0", render::vertex_type::TEXCOORD},
-		{"in.var.COLOR0", render::vertex_type::COLOR},
+		{"in.var.COLOR0", render::vertex_type::COLOR}, 
+		{"in.var.BLENDINDICES0", render::vertex_type::BLENDINDICES}, 
+		{"in.var.BLENDWEIGHT0", render::vertex_type::BLENDWEIGHT},
 	};
 	for (auto &tp:name_to_type) {
 		if (std::get<0>(tp) == name)

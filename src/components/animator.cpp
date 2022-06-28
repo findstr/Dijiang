@@ -19,18 +19,27 @@ animator::get_skeleton()
 void
 animator::tick(float delta)
 {
-#if 1
-	std::vector<animation::skeleton::pose> pose;
+	progress += delta / total;
+	progress -= std::floor(progress);
 	auto *skel = get_skeleton();
-	skel->apply_animation(go->transform, pose);
+	debug_pose.clear();
+	skel->apply_animation(progress, debug_pose);
+	current_pose.clear();
+	current_pose.resize(debug_pose.size());
+	std::transform(debug_pose.begin(), debug_pose.end(), current_pose.begin(), [](const animation::skeleton::pose &p) {
+		return p.matrix;
+	});
+#if 1
 	auto &dbg = render::debugger::inst();
-	for (size_t i = 0; i < pose.size(); i++) {
-		auto &joint = pose[i];
+	for (size_t i = 0; i < debug_pose.size(); i++) {
+		auto &joint = debug_pose[i];
 		auto parent = skel->parent(joint.id);
 		if (parent >= 0) {
 			dbg.draw_line(
-				pose[parent].position, color(0.0f, 0.0f, 1.f), 
-				joint.position, color(0.0, 1.0f, 0.0f)
+				transform->rotation * debug_pose[parent].position * transform->scale + transform->position, 
+				color(0.0f, 0.0f, 1.f), 
+				transform->rotation * joint.position * transform->scale + transform->position, 
+				color(0.0, 1.0f, 0.0f)
 			);
 		}
 	}

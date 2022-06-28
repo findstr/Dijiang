@@ -9,6 +9,8 @@ struct vertex_type {
 		POSITION,
 		TEXCOORD,
 		COLOR,
+		BLENDINDICES,
+		BLENDWEIGHT,
 		COUNT,
 	};
 	constexpr vertex_type(type t) : value_(t) {}
@@ -20,13 +22,17 @@ struct vertex_type {
 			return 3;
 		case COLOR:
 			return (3+2);
+                case BLENDINDICES:
+			return (3+2+3);
+                case BLENDWEIGHT:
+			return (3+2+3+4);
 		default:
 			assert(!"unsupport format");
 			return 0;
 		}
 	}
 	static inline constexpr size_t size() {
-		return (3+2+3);
+		return (3+2+3+4+4);
 	}
 	constexpr operator type() const { return value_; }
 	explicit operator bool() = delete;

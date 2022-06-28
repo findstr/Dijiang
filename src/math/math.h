@@ -14,7 +14,6 @@ using vector2i = Eigen::Vector2i;
 using vector4f = Eigen::Vector4f;
 
 using matrix3f = Eigen::Matrix3f;
-using matrix4f = Eigen::Matrix4f;
 using angleaxisf = Eigen::AngleAxisf;
 
 struct vector2f : public Eigen::Vector2f {
@@ -91,6 +90,10 @@ struct vector3f : public Eigen::Vector3f {
 	static vector3f left() {
 		return vector3f(-1, 0, 0);
 	}
+	static vector3f lerp(const vector3f &a, const vector3f &b, float ratio) {
+		vector3f delta = b - a;
+		return a + delta * ratio;
+	}
 };
 
 struct quaternion : public Eigen::Quaternionf {
@@ -143,9 +146,39 @@ struct quaternion : public Eigen::Quaternionf {
 	static quaternion identity() {
 		return Identity();
 	}
+	static quaternion slerp(const quaternion &a, const quaternion &b, float ratio) {
+		return ((Eigen::Quaternionf)a).slerp(ratio, b);
+	}
 };
 
-
+struct matrix4f : public Eigen::Matrix4f {
+public:
+	matrix4f() : Eigen::Matrix4f() {}
+	matrix4f(const Eigen::Matrix4f &m) : Eigen::Matrix4f(m) {}
+	matrix4f(matrix4f &m) : Eigen::Matrix4f(m) {}
+public:
+	matrix4f inverse() const {
+		Eigen::Matrix4f m = ((Eigen::Matrix4f *)this)->inverse();
+		return m;
+	}
+	matrix4f operator *(const matrix4f &m) {
+		return (matrix4f)((Eigen::Matrix4f)(*this) * m);
+	}
+	static matrix4f identity() {
+		Eigen::Matrix4f m = Eigen::Matrix4f::Identity();
+		return m;
+	}
+	static matrix4f trs(
+		const vector3f &translation, 
+		const quaternion &rotation,
+		const vector3f &scale)
+	{
+		Eigen::Transform<float, 3, Eigen::Affine> t = 
+			Eigen::Translation3f(translation) *
+			rotation * Eigen::Scaling(scale);
+		return t.matrix();
+	}
+};
 
 }
 

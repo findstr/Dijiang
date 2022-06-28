@@ -1,5 +1,5 @@
 render_queue : geometry
-shader_file: asset/shaders/shader
+shader_file: asset/shaders/skeleton
 shader_params:
     -
         name: tex

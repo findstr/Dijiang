@@ -46,7 +46,7 @@ else
 			local iv = b[iname]
 			local wv = b[wname]
 			if iv and wv then
-				vertex[#vertex + 1] = string.format("%s:%s", iv, wv)
+				vertex[#vertex + 1] = string.format("%s:%s", iv - 1, wv)
 			else
 				assert(not iv)
 				assert(not wv)

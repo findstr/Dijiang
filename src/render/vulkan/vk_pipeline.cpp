@@ -39,6 +39,12 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 		case render::vertex_type::TEXCOORD:
 			ad.format = VK_FORMAT_R32G32_SFLOAT;
 			break;
+                case render::vertex_type::BLENDINDICES:
+			ad.format = VK_FORMAT_R32G32B32A32_UINT;
+			break;
+                case render::vertex_type::BLENDWEIGHT:
+			ad.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+			break;
 		default:
 			assert(!"unsupport vertex attr type");
 			break;
