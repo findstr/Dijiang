@@ -97,6 +97,8 @@ name_to_vertex_type(const std::string &name)
 		{"in.var.POSITION0", render::vertex_type::POSITION},
 		{"in.var.TEXCOORD0", render::vertex_type::TEXCOORD},
 		{"in.var.COLOR0", render::vertex_type::COLOR}, 
+		{"in.var.NORMAL0", render::vertex_type::NORMAL},
+		{"in.var.TANGENT0", render::vertex_type::TANGENT},
 		{"in.var.BLENDINDICES0", render::vertex_type::BLENDINDICES}, 
 		{"in.var.BLENDWEIGHT0", render::vertex_type::BLENDWEIGHT},
 	};

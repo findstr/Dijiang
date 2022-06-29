@@ -12,6 +12,8 @@ vk_mesh::upload_vertex(std::unique_ptr<vk_buffer> &buf)
 	bool hasuv = uv.size() >= vertices.size();
 	bool hascolor = colors.size() >= vertices.size();
 	bool isskin = bone_weights.size() > 0;
+	bool hasnormal = normals.size() > 0;
+	bool hastangent = tangents.size() > 0;
 	size_t vertex_size = render::vertex_type::size();
 	VkDeviceSize size = vertex_size * sizeof(float) * vertices.size();
 	vk_buffer staging(vk_buffer::STAGING, size);
@@ -20,6 +22,8 @@ vk_mesh::upload_vertex(std::unique_ptr<vk_buffer> &buf)
 	render::vertex_type t_pos = render::vertex_type::POSITION;
 	render::vertex_type t_uv = render::vertex_type::TEXCOORD;
 	render::vertex_type t_color = render::vertex_type::COLOR;
+	render::vertex_type t_normal = render::vertex_type::NORMAL;
+	render::vertex_type t_tangent = render::vertex_type::TANGENT;
 	render::vertex_type t_indices = render::vertex_type::BLENDINDICES;
 	render::vertex_type t_weights = render::vertex_type::BLENDWEIGHT;
 
@@ -38,6 +42,18 @@ vk_mesh::upload_vertex(std::unique_ptr<vk_buffer> &buf)
 			p[0] = colors[i].x();
 			p[1] = colors[i].y();
 			p[2] = colors[i].z();
+		}
+		if (hasnormal) {
+			auto *p = &data[t_normal.offset()];
+			p[0] = normals[i].x();
+			p[1] = normals[i].y();
+			p[2] = normals[i].z();
+		}
+		if (hastangent) {
+			auto *p = &data[t_tangent.offset()];
+			p[0] = tangents[i].x();
+			p[1] = tangents[i].y();
+			p[2] = tangents[i].z();
 		}
 		if (isskin) {
 			int j;

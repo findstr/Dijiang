@@ -2,14 +2,14 @@ render_queue : geometry
 shader_file: asset/shaders/skeleton
 shader_params:
     -
-        name: tex
+        name: tex_albedo
         type: texture2d
         file: asset/textures/robot/xiaobairen1k_BaseColor.tga
     -
-        name: roughness
+        name: tex_roughness
         type: texture2d
         file: asset/textures/robot/xiaobairen1k_OcclusionRoughnessMetallic.tga
     -
-        name: normal
+        name: tex_normal
         type: texture2d
         file: asset/textures/robot/xiaobairen1k_Normal.tga

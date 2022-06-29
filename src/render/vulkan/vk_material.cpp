@@ -77,10 +77,10 @@ vk_material::set_texture(const std::string &name,
 			dw.descriptorCount = 1;
 			dw.pImageInfo = &imageInfo;
 		}
-		vkUpdateDescriptorSets(VK_CTX.logicdevice,
-			static_cast<uint32_t>(descriptorWrite.size()),
-			descriptorWrite.data(), 0, nullptr);
 	}
+	vkUpdateDescriptorSets(VK_CTX.logicdevice,
+		static_cast<uint32_t>(descriptorWrite.size()),
+		descriptorWrite.data(), 0, nullptr);
 }
 
 void

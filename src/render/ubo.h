@@ -14,15 +14,17 @@ namespace render {
 namespace ubo {
 
 struct per_frame {
-	glm::vec4 light_position;
-	glm::vec4 light_direction;
-	glm::vec4 light_intensity;
+	glm::vec3 engine_light_ambient;
+	glm::vec3 engine_light_position;
+	glm::vec3 engine_light_direction;
+	glm::vec3 engine_light_intensity;
 };
 
 struct per_draw{
 	glm::mat4 model;
 	glm::mat4 view;
 	glm::mat4 proj;
+	glm::vec3 engine_camera_pos;
 	std::array<glm::mat4, ENGINE_MAX_BONE_PER_SKELETON> skeleton_pose;
 };
 

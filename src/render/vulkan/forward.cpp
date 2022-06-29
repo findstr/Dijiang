@@ -31,11 +31,6 @@
 namespace engine {
 namespace vulkan {
 
-#define CBV_BIND_ID	(0*128)
-#define UAV_BIND_ID	(1*128)
-#define SRV_BIND_ID	(2*128)
-#define SAM_BIND_ID	(3*128)
-
 struct framebuffer {
 	VkFramebuffer handle = VK_NULL_HANDLE;
 };
@@ -358,7 +353,18 @@ to_mat4(const matrix4f &m)
 }
 
 static void
-update_uniformbuffer(render::ubo::per_draw *ubo, camera *cam, const draw_object &draw) {
+update_uniformbuffer_per_frame(render::ubo::per_frame *ubo)
+{
+	ubo->engine_light_ambient = glm::vec3(1.0f);
+	ubo->engine_light_direction.x = 0.0f;
+	ubo->engine_light_direction.y = 0.0f;
+	ubo->engine_light_direction.z = 1.f;
+
+	ubo->engine_light_intensity = glm::vec3(1.0f);
+}
+
+static void
+update_uniformbuffer_per_draw(render::ubo::per_draw *ubo, camera *cam, const draw_object &draw) {
 	vector3f axis;
 	auto &pos = draw.position;
 	auto &scale = draw.scale;
@@ -367,7 +373,10 @@ update_uniformbuffer(render::ubo::per_draw *ubo, camera *cam, const draw_object 
 	auto eye = cam->transform->position;
 	auto eye_dir = eye + cam->forward() * 5.0f;
 	auto up = cam->up();
-
+	ubo->engine_camera_pos = glm::vec3(
+		cam->transform->position.x(),
+		cam->transform->position.y(),
+		cam->transform->position.z());
 	auto model = glm::mat4(1.0f);
 	model = glm::translate(model, glm::vec3(pos.x(), pos.y(), pos.z()));
 	model = glm::rotate(model, glm::radians(angle), glm::vec3(axis.x(), axis.y(), axis.z()));
@@ -421,6 +430,7 @@ forward_begin(forward *fw, int obj_count)
 	fw->uniform_per_draw.frame_begin(fw->frameidx, obj_count);
 	fw->uniform_per_frame.frame_begin(fw->frameidx, 1);
 	std::tie(fw->per_frame_buffer, fw->per_frame_offset) = fw->uniform_per_frame.per_begin();
+	update_uniformbuffer_per_frame(fw->per_frame_buffer);
 }
 
 void
@@ -450,7 +460,7 @@ forward_tick(camera *cam, forward *fw, const draw_object &draw)
 	uint32_t ubo_offset[2];
 	std::tie(ubo, ubo_offset[0]) = fw->uniform_per_draw.per_begin();
 	ubo_offset[1] = fw->per_frame_offset;
-	update_uniformbuffer(ubo, cam, draw);
+	update_uniformbuffer_per_draw(ubo, cam, draw);
 	fw->uniform_per_draw.per_end();
 
 

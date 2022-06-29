@@ -181,6 +181,7 @@ load_mesh(const std::string &file)
 	const aiScene* pScene = importer.ReadFile(
 		file.c_str(),
 		aiProcess_Triangulate |
+		aiProcess_CalcTangentSpace |
 		aiProcess_FlipUVs |
 		aiProcess_GenSmoothNormals);
 	if (pScene == nullptr)
@@ -191,11 +192,25 @@ load_mesh(const std::string &file)
 	mesh->uv.reserve(paiMesh->mNumVertices);
 	mesh->triangles.reserve(paiMesh->mNumFaces);
 	for (unsigned int i = 0 ; i < paiMesh->mNumVertices ; i++) {
-		const aiVector3D pPos = (paiMesh->mVertices[i]);
+		const aiVector3D pPos = paiMesh->mVertices[i];
 		const aiVector3D pTexCoord = paiMesh->mTextureCoords[0][i];
 		mesh->vertices.emplace_back(pPos.x, pPos.y, pPos.z);
 		mesh->uv.emplace_back(pTexCoord.x, pTexCoord.y);
 		mesh->colors.emplace_back(0.f, 0.f, 0.f);
+	}
+	if (paiMesh->mNormals != nullptr) {
+		mesh->normals.reserve(paiMesh->mNumVertices);
+		for (unsigned int i = 0 ; i < paiMesh->mNumVertices ; i++) {
+			const aiVector3D pNormal = paiMesh->mNormals[i];
+			mesh->normals.emplace_back(pNormal.x, pNormal.y, pNormal.z);
+		}
+	}
+	if (paiMesh->mTangents != nullptr) {
+		mesh->tangents.reserve(paiMesh->mNumVertices);
+		for (unsigned int i = 0 ; i < paiMesh->mNumVertices ; i++) {
+			const aiVector3D pNormal = paiMesh->mTangents[i];
+			mesh->tangents.emplace_back(pNormal.x, pNormal.y, pNormal.z);
+		}
 	}
 	for (unsigned int i = 0; i < paiMesh->mNumFaces; i++) {
 		auto face = &paiMesh->mFaces[i];

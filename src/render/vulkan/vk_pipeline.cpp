@@ -38,6 +38,12 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 		case render::vertex_type::TEXCOORD:
 			ad.format = VK_FORMAT_R32G32_SFLOAT;
 			break;
+                case render::vertex_type::NORMAL:
+			ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+			break;
+                case render::vertex_type::TANGENT:
+			ad.format = VK_FORMAT_R32G32B32_SFLOAT;
+			break;
                 case render::vertex_type::BLENDINDICES:
 			ad.format = VK_FORMAT_R32G32B32A32_UINT;
 			break;
