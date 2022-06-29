@@ -3,16 +3,16 @@ namespace engine {
 namespace vulkan {
 
 VkCommandBuffer
-cmdbuf_single_begin(const renderctx *ctx)
+cmdbuf_single_begin()
 {
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = ctx->commandpool;
+	allocInfo.commandPool = VK_CTX.commandpool;
 	allocInfo.commandBufferCount = 1;
 
 	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(ctx->logicdevice, &allocInfo, &commandBuffer);
+	vkAllocateCommandBuffers(VK_CTX.logicdevice, &allocInfo, &commandBuffer);
 
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -21,7 +21,7 @@ cmdbuf_single_begin(const renderctx *ctx)
 	return commandBuffer;
 }
 void
-cmdbuf_single_end(const renderctx *ctx, VkCommandBuffer commandBuffer)
+cmdbuf_single_end(VkCommandBuffer commandBuffer)
 {
 	vkEndCommandBuffer(commandBuffer);
 
@@ -30,10 +30,10 @@ cmdbuf_single_end(const renderctx *ctx, VkCommandBuffer commandBuffer)
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(ctx->graphicsqueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(ctx->graphicsqueue);
+	vkQueueSubmit(VK_CTX.graphicsqueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(VK_CTX.graphicsqueue);
 
-	vkFreeCommandBuffers(ctx->logicdevice, ctx->commandpool, 1, &commandBuffer);
+	vkFreeCommandBuffers(VK_CTX.logicdevice, VK_CTX.commandpool, 1, &commandBuffer);
 }
 
 

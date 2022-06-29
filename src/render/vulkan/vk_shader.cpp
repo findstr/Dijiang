@@ -50,6 +50,10 @@ vk_shader::analyze_uniform_buffers(
 			assert(set == ENGINE_PER_DRAW_SET);
 			assert(binding == ENGINE_PER_DRAW_BINDING);
 			continue;
+		} else if (var_name == ENGINE_PER_FRAME_NAME) {
+			assert(set == ENGINE_PER_FRAME_SET);
+			assert(binding == ENGINE_PER_FRAME_BINDING);
+			continue;
 		}
 		auto &bi = buffers.emplace_back();
 		bi.set = set;
@@ -209,13 +213,12 @@ vk_shader::build_desc_set_layout()
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	layoutInfo.pBindings = bindings.data();
 
-	result = vkCreateDescriptorSetLayout(vk_ctx->logicdevice, &layoutInfo, nullptr, &desc_set_layout_);
+	result = vkCreateDescriptorSetLayout(VK_CTX.logicdevice, &layoutInfo, nullptr, &desc_set_layout_);
 	assert(result == VK_SUCCESS);
 }
 
 vk_shader::vk_shader(const std::vector<render::shader::code> &stages)
 {
-	auto *ctx = renderctx_get();
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	modules.reserve(stages.size());
@@ -235,7 +238,7 @@ vk_shader::vk_shader(const std::vector<render::shader::code> &stages)
 		analyze_samplers(compiler, res, stage);
 		createInfo.codeSize = code_size;
 		createInfo.pCode = code;
-		if (vkCreateShaderModule(ctx->logicdevice, &createInfo,
+		if (vkCreateShaderModule(VK_CTX.logicdevice, &createInfo,
 			nullptr, &shader_module) != VK_SUCCESS) {
 			assert(!"create shader fail");
 		}
@@ -246,8 +249,7 @@ vk_shader::vk_shader(const std::vector<render::shader::code> &stages)
 
 vk_shader::~vk_shader()
 {
-	auto *ctx = renderctx_get();
-	auto device = ctx->logicdevice;
+	auto device = VK_CTX.logicdevice;
 	for (auto &si : modules)
 		vkDestroyShaderModule(device, si.module, nullptr);
 	if (desc_set_layout_ != VK_NULL_HANDLE)

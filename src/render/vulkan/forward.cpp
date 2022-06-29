@@ -53,18 +53,20 @@ struct forward {
 	std::vector<renderframe> renderframes;
 	textureEx depthbuffer;
 	VkDescriptorSet desc_set = VK_NULL_HANDLE;
-	vk_uniform<render::ubo::per_draw> uniform_per_draw;
+	vk_uniform<render::ubo::per_frame, ENGINE_PER_FRAME_BINDING> uniform_per_frame;
+	vk_uniform<render::ubo::per_draw, ENGINE_PER_DRAW_BINDING> uniform_per_draw;
+	render::ubo::per_frame *per_frame_buffer = nullptr;
+	int per_frame_offset = 0;
 };
 
 static VkFormat
 find_supported_format(
-		const renderctx *ctx,
 		const std::vector<VkFormat> &candidates,
 		VkImageTiling tiling, VkFormatFeatureFlags features)
 {
 	for (VkFormat fmt : candidates) {
 		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(ctx->phydevice, fmt, &props);
+		vkGetPhysicalDeviceFormatProperties(VK_CTX.phydevice, fmt, &props);
 		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
 			return fmt;
 		} else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
@@ -75,19 +77,19 @@ find_supported_format(
 }
 
 static VkFormat
-find_depth_format(const renderctx *ctx)
+find_depth_format()
 {
-	return find_supported_format(ctx,
+	return find_supported_format(
 		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 static int
-new_renderpass(const renderctx *ctx, forward *fw)
+new_renderpass(forward *fw)
 {
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = ctx->swapchain.imageformat;
+	colorAttachment.format = VK_CTX.swapchain.imageformat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -102,7 +104,7 @@ new_renderpass(const renderctx *ctx, forward *fw)
 
 
 	VkAttachmentDescription depthAttachment{};
-	depthAttachment.format = find_depth_format(ctx);
+	depthAttachment.format = find_depth_format();
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -140,24 +142,24 @@ new_renderpass(const renderctx *ctx, forward *fw)
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	if (vkCreateRenderPass(ctx->logicdevice, &renderPassInfo, nullptr, &fw->renderpass) != VK_SUCCESS)
+	if (vkCreateRenderPass(VK_CTX.logicdevice, &renderPassInfo, nullptr, &fw->renderpass) != VK_SUCCESS)
 		return -1;
 	return 0;
 }
 
 static void
-del_framebuffers(const renderctx *ctx, forward *fw)
+del_framebuffers(forward *fw)
 {
 	for (auto &fb:fw->framebuffers)
-		vkDestroyFramebuffer(ctx->logicdevice, fb.handle, nullptr);
+		vkDestroyFramebuffer(VK_CTX.logicdevice, fb.handle, nullptr);
 	fw->framebuffers.clear();
 }
 
 static int
-new_framebuffers(const renderctx *ctx, forward *fw)
+new_framebuffers(forward *fw)
 {
-	fw->framebuffers.reserve(ctx->swapchain.imageviews.size());
-	for (auto view:ctx->swapchain.imageviews) {
+	fw->framebuffers.reserve(VK_CTX.swapchain.imageviews.size());
+	for (auto view:VK_CTX.swapchain.imageviews) {
 		auto &fb = fw->framebuffers.emplace_back();
 		std::array<VkImageView, 2> attachments = {
 			view,
@@ -169,11 +171,11 @@ new_framebuffers(const renderctx *ctx, forward *fw)
 		framebuffInfo.renderPass = fw->renderpass; //指定Framebuffer需要兼容的renderPass,并不定是这个Renderpass会使用这个Framebuffer
 		framebuffInfo.attachmentCount = attachments.size();
 		framebuffInfo.pAttachments = attachments.data();
-		framebuffInfo.width = ctx->swapchain.extent.width;
-		framebuffInfo.height = ctx->swapchain.extent.height;
+		framebuffInfo.width = VK_CTX.swapchain.extent.width;
+		framebuffInfo.height = VK_CTX.swapchain.extent.height;
 		framebuffInfo.layers = 1;
-		if (vkCreateFramebuffer(ctx->logicdevice, &framebuffInfo, nullptr, &fb.handle) != VK_SUCCESS) {
-			del_framebuffers(ctx, fw);
+		if (vkCreateFramebuffer(VK_CTX.logicdevice, &framebuffInfo, nullptr, &fb.handle) != VK_SUCCESS) {
+			del_framebuffers(fw);
 			return -1;
 		}
 	}
@@ -182,9 +184,9 @@ new_framebuffers(const renderctx *ctx, forward *fw)
 
 
 static void
-del_renderframe(const renderctx *ctx, renderframe &fb)
+del_renderframe(renderframe &fb)
 {
-	framesync_del(ctx, fb.sync);
+	framesync_del(fb.sync);
 	/*
 	buffer_del(ctx, fb.uniformbuffer);
 	VkDescriptorSet descset = VK_NULL_HANDLE;
@@ -193,21 +195,21 @@ del_renderframe(const renderctx *ctx, renderframe &fb)
 }
 
 static int
-new_renderframe(const renderctx *ctx, forward *fw, renderframe *fb)
+new_renderframe(forward *fw, renderframe *fb)
 {
 	VkResult result;
 	VkCommandBufferAllocateInfo cba = {};
 	cba.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cba.commandPool = ctx->commandpool;
+	cba.commandPool = VK_CTX.commandpool;
 	cba.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	cba.commandBufferCount = 1;
-	result = vkAllocateCommandBuffers(ctx->logicdevice, &cba, &fb->cmdbuf);
+	result = vkAllocateCommandBuffers(VK_CTX.logicdevice, &cba, &fb->cmdbuf);
 	if (result != VK_SUCCESS) {
 		fprintf(stderr, "[render] new_renderframe result:%d\n", result);
 		return -1;
 	}
 
-	fb->sync = framesync_new(ctx);
+	fb->sync = framesync_new();
 	return 0;
 
 }
@@ -232,32 +234,32 @@ new_pipeline(const renderctx *ctx, forward *fw)
 }*/
 
 static void
-texture_del(const renderctx *ctx, textureEx &tex)
+texture_del(textureEx &tex)
 {
 	if (tex.sampler != VK_NULL_HANDLE)
-		vkDestroySampler(ctx->logicdevice, tex.sampler, nullptr);
-	vkDestroyImageView(ctx->logicdevice, tex.view, nullptr);
-	vmaDestroyImage(ctx->allocator, tex.image, tex.allocation);
+		vkDestroySampler(VK_CTX.logicdevice, tex.sampler, nullptr);
+	vkDestroyImageView(VK_CTX.logicdevice, tex.view, nullptr);
+	vmaDestroyImage(VK_CTX.allocator, tex.image, tex.allocation);
 }
 
 void
-forward_del(const renderctx *ctx, forward *fw)
+forward_del(forward *fw)
 {
-	vkDeviceWaitIdle(ctx->logicdevice);
+	vkDeviceWaitIdle(VK_CTX.logicdevice);
 	/*
-	vkDestroyPipeline(ctx->logicdevice, fw->pipeline, nullptr);
-	vkDestroyPipelineLayout(ctx->logicdevice, fw->pipelinelayout, nullptr);
+	vkDestroyPipeline(VK_CTX.logicdevice, fw->pipeline, nullptr);
+	vkDestroyPipelineLayout(VK_CTX.logicdevice, fw->pipelinelayout, nullptr);
 	*/
-	del_framebuffers(ctx, fw);
+	del_framebuffers(fw);
 	for (auto &fb:fw->renderframes)
-		del_renderframe(ctx, fb);
-	texture_del(ctx, fw->depthbuffer);
-	vkDestroyRenderPass(ctx->logicdevice, fw->renderpass, nullptr);
+		del_renderframe(fb);
+	texture_del(fw->depthbuffer);
+	vkDestroyRenderPass(VK_CTX.logicdevice, fw->renderpass, nullptr);
 	delete fw;
 }
 
 static VkImageView
-texture_new_view(const renderctx *ctx,
+texture_new_view(
 	VkImage image,
 	VkFormat format,
 	VkImageAspectFlags aspectFlags,
@@ -278,14 +280,13 @@ texture_new_view(const renderctx *ctx,
 	createInfo.subresourceRange.levelCount = mipLevels;
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
-	if (vkCreateImageView(ctx->logicdevice, &createInfo, nullptr, &imageView) != VK_SUCCESS)
+	if (vkCreateImageView(VK_CTX.logicdevice, &createInfo, nullptr, &imageView) != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 	return imageView;
 }
 
 static std::optional<textureEx>
 texture_new_depth(
-	const renderctx *ctx,
 	uint32_t width, uint32_t height,
 	const texture_setting &setting)
 {
@@ -312,33 +313,33 @@ texture_new_depth(
 	vaci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 	vaci.priority = 1.0f;
 
-	auto ret = vmaCreateImage(ctx->allocator, &imageInfo, &vaci, &tex.image, &tex.allocation, nullptr);
+	auto ret = vmaCreateImage(VK_CTX.allocator, &imageInfo, &vaci, &tex.image, &tex.allocation, nullptr);
 	if (ret != VK_SUCCESS)
 		return std::nullopt;
-	tex.view = texture_new_view(ctx, tex.image, format, setting.aspectflags, setting.mipmap_levels);
+	tex.view = texture_new_view(tex.image, format, setting.aspectflags, setting.mipmap_levels);
 	tex.sampler = VK_NULL_HANDLE;
 	return tex;
 }
 
 
 forward *
-forward_new(const renderctx *ctx)
+forward_new()
 {
 	forward *fw = new forward();
-	new_renderpass(ctx, fw);
-	fw->renderframes.reserve(ctx->swapchain.imageviews.size());
+	new_renderpass(fw);
+	fw->renderframes.reserve(VK_CTX.swapchain.imageviews.size());
 	texture_setting setting = {
 		.mipmap_levels = 1,
-		.format = find_depth_format(ctx),
+		.format = find_depth_format(),
 		.tiling = VK_IMAGE_TILING_OPTIMAL,
 		.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 		.aspectflags = VK_IMAGE_ASPECT_DEPTH_BIT,
 	};
-	fw->depthbuffer = *texture_new_depth(ctx, ctx->swapchain.extent.width, ctx->swapchain.extent.height, setting);
-	new_framebuffers(ctx, fw);
+	fw->depthbuffer = *texture_new_depth(VK_CTX.swapchain.extent.width, VK_CTX.swapchain.extent.height, setting);
+	new_framebuffers(fw);
 	for (size_t i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
 		auto &fb = fw->renderframes.emplace_back();
-		new_renderframe(ctx, fw, &fb);
+		new_renderframe(fw, &fb);
 	}
 	return fw;
 }
@@ -357,7 +358,7 @@ to_mat4(const matrix4f &m)
 }
 
 static void
-update_uniformbuffer(const renderctx *ctx, render::ubo::per_draw *ubo, camera *cam,  const draw_object &draw) {
+update_uniformbuffer(render::ubo::per_draw *ubo, camera *cam, const draw_object &draw) {
 	vector3f axis;
 	auto &pos = draw.position;
 	auto &scale = draw.scale;
@@ -390,7 +391,7 @@ void
 forward_begin(forward *fw, int obj_count)
 {
 	auto &rf = fw->renderframes[fw->frameidx];
-	if (framesync_aquire(vk_ctx, rf.sync, &image_index)) {
+	if (framesync_aquire(rf.sync, &image_index)) {
 		//TODO:recreate swapchain
 		return ;
 	}
@@ -413,11 +414,13 @@ forward_begin(forward *fw, int obj_count)
 	renderPassInfo.renderPass = fw->renderpass;
 	renderPassInfo.framebuffer = fb.handle;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = vk_ctx->swapchain.extent;
+	renderPassInfo.renderArea.extent = VK_CTX.swapchain.extent;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
 	renderPassInfo.pClearValues = clearColor.data();
 	vkCmdBeginRenderPass(rf.cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-	fw->desc_set = fw->uniform_per_draw.frame_begin(fw->frameidx, obj_count);
+	fw->uniform_per_draw.frame_begin(fw->frameidx, obj_count);
+	fw->uniform_per_frame.frame_begin(fw->frameidx, 1);
+	std::tie(fw->per_frame_buffer, fw->per_frame_offset) = fw->uniform_per_frame.per_begin();
 }
 
 void
@@ -427,14 +430,16 @@ forward_end(forward *fw)
 	vkCmdEndRenderPass(rf.cmdbuf);
 	if (vkEndCommandBuffer(rf.cmdbuf) != VK_SUCCESS)
 		return ;
-	framesync_submit(vk_ctx, rf.sync, rf.cmdbuf, image_index);
+	framesync_submit(rf.sync, rf.cmdbuf, image_index);
 	fw->frameidx = (fw->frameidx + 1) % fw->renderframes.size();
+	fw->uniform_per_frame.per_end();
+	fw->uniform_per_frame.frame_end();
 	fw->uniform_per_draw.frame_end();
 }
 
 
 void
-forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &draw)
+forward_tick(camera *cam, forward *fw, const draw_object &draw)
 {
 	auto &rf = fw->renderframes[fw->frameidx];
 	vk_mesh *mesh = (vk_mesh *)draw.mesh;
@@ -442,9 +447,10 @@ forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &
 	mesh->flush();
 	auto descset = mat->desc_set[fw->frameidx];
 	render::ubo::per_draw *ubo;
-	uint32_t ubo_offset;
-	std::tie(ubo, ubo_offset) = fw->uniform_per_draw.per_begin();
-	update_uniformbuffer(ctx, ubo, cam, draw);
+	uint32_t ubo_offset[2];
+	std::tie(ubo, ubo_offset[0]) = fw->uniform_per_draw.per_begin();
+	ubo_offset[1] = fw->per_frame_offset;
+	update_uniformbuffer(ubo, cam, draw);
 	fw->uniform_per_draw.per_end();
 
 
@@ -467,8 +473,8 @@ forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &
 		rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
 		mat->pipeline->layout,
 		1,
-		1, &fw->desc_set,
-		1, &ubo_offset);
+		1, &VK_CTX.engine_desc_set,
+		2, ubo_offset);
 	vkCmdDrawIndexed(rf.cmdbuf, mesh->index_count, 1, 0, 0, 0);
 }
 

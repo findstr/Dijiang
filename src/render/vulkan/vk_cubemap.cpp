@@ -6,7 +6,6 @@
 #include "vk_texture.h"
 #include "vk_filter.h"
 #include "vk_cubemap.h"
-#include "renderctx.h"
 
 namespace engine {
 namespace vulkan {

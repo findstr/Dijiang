@@ -1,8 +1,8 @@
 #include <vector>
 #include "vertex.h"
+#include "vk_ctx.h"
 #include "vk_shader_variables.h"
 #include "vk_pipeline.h"
-#include "renderctx.h"
 
 namespace engine {
 namespace vulkan {
@@ -13,7 +13,6 @@ VkPrimitiveTopology vk_pipeline::primitive_topolgy =
 vk_pipeline *
 vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 {
-	auto *ctx = renderctx_get();
 	VkPipeline pipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelinelayout = VK_NULL_HANDLE;
 
@@ -66,14 +65,14 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)ctx->swapchain.extent.width;
-	viewport.height = (float)ctx->swapchain.extent.height;
+	viewport.width = (float)VK_CTX.swapchain.extent.width;
+	viewport.height = (float)VK_CTX.swapchain.extent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent = ctx->swapchain.extent;
+	scissor.extent = VK_CTX.swapchain.extent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -139,30 +138,14 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	dynamicState.pDynamicStates = dynamicStates;
 
 	VkDescriptorSetLayout shader_layout = shader->desc_set_layout();
-	VkDescriptorSetLayout uniform_layout = VK_NULL_HANDLE;
-	VkDescriptorSetLayoutBinding uniform_bindings = {
-		.binding = ENGINE_PER_DRAW_BINDING,
-		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-		.descriptorCount = 1,
-		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-		.pImmutableSamplers = nullptr,
-	};
-	VkDescriptorSetLayoutCreateInfo ci{};
-	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	ci.bindingCount = 1;
-	ci.pBindings = &uniform_bindings;
-	auto result = vkCreateDescriptorSetLayout(vk_ctx->logicdevice, &ci, nullptr, &uniform_layout);
-	assert(result == VK_SUCCESS);
-
-	//TODO:
-	VkDescriptorSetLayout layouts[] = {shader_layout, uniform_layout};
+	VkDescriptorSetLayout layouts[] = {shader_layout, VK_CTX.engine_desc_set_layout};
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = 2;
 	pipelineLayoutInfo.pSetLayouts = layouts;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = 0;
-	if (vkCreatePipelineLayout(ctx->logicdevice, &pipelineLayoutInfo, nullptr, &pipelinelayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(VK_CTX.logicdevice, &pipelineLayoutInfo, nullptr, &pipelinelayout) != VK_SUCCESS)
 		return nullptr;
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};
@@ -205,7 +188,7 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
 	printf("create pipeline begin\n");
-	if (vkCreateGraphicsPipelines(ctx->logicdevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines(VK_CTX.logicdevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		return nullptr;
 	printf("create pipeline end\n");
 	return new vk_pipeline(pipeline, pipelinelayout);
@@ -213,9 +196,8 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 
 vk_pipeline::~vk_pipeline()
 {
-	auto *ctx = renderctx_get();
-	vkDestroyPipeline(ctx->logicdevice, handle, nullptr);
-	vkDestroyPipelineLayout(ctx->logicdevice, layout, nullptr);
+	vkDestroyPipeline(VK_CTX.logicdevice, handle, nullptr);
+	vkDestroyPipelineLayout(VK_CTX.logicdevice, layout, nullptr);
 }
 
 }}

@@ -1,46 +1,35 @@
-#include "include/engine_variables.inc.hlsl"
+#include "include/engine_skeleton.inc.hlsl"
 
-struct VSInput {
-	float3 inPosition : POSITION0;
-	float3 inColor : COLOR0;
-	float2 inTexCoord : TEXCOORD0;
-	int4 bone_indices : BLENDINDICES0;
-	float4 bone_weights : BLENDWEIGHT0;
+struct vsin {
+	float3 position : POSITION0;
+	float3 color : COLOR0;
+	float2 uv : TEXCOORD0;
+	engine_skeleton_vertex skeleton;
 };
 
-struct VSOutput {
+struct vsout {
 	float4 pos : SV_POSITION;
-	float3 fragColor : COLOR0;
-	float2 fragTexCoord : TEXCOORD0;
+	float3 color : COLOR0;
+	float2 uv : TEXCOORD0;
 };
 
-VSOutput vert(VSInput input) {
-	VSOutput output = (VSOutput)0;
-	
-	float4x4 bone_blending = {
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-		0, 0, 0, 0,
-	};
-	
-	for (int i = 0; i < 4; i++)
-		bone_blending += engine_skeleton_matrix[input.bone_indices[i]] * input.bone_weights[i];
-	float3 inPosition = mul(bone_blending, float4(input.inPosition, 1.0)).xyz;
-	
+vsout vert(vsin input) {
+	vsout output;
+	float3 pos = engine_skeleton_vertex_blend(input.position, input.skeleton);
 	float4x4 vp = mul(engine_matrix_proj,  engine_matrix_view);
 	float4x4 mvp = mul(engine_matrix_proj, mul(engine_matrix_view, engine_matrix_model));
-	output.pos = mul(mvp, float4(inPosition, 1.0));
-	output.fragColor = input.inColor;
-	output.fragTexCoord = input.inTexCoord;
+	output.pos = mul(mvp, float4(pos, 1.0));
+	output.color = input.color;
+	output.uv = input.uv;
 	return output;
 }
 
 Texture2D tex;
+Texture2D normal;
 SamplerState tex_sampler;
 
-float4 frag(VSOutput input) : SV_TARGET
+float4 frag(vsout input) : SV_TARGET
 {
-	return tex.Sample(tex_sampler, input.fragTexCoord);
+	return tex.Sample(tex_sampler, input.uv);
 }
 

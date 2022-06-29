@@ -10,16 +10,16 @@ struct framesync {
 };
 
 void
-framesync_del(const renderctx *ctx, framesync *fs)
+framesync_del(framesync *fs)
 {
-	vkDestroySemaphore(ctx->logicdevice, fs->imgavailable, nullptr);
-	vkDestroySemaphore(ctx->logicdevice, fs->renderfin, nullptr);
-	vkDestroyFence(ctx->logicdevice, fs->fence, nullptr);
+	vkDestroySemaphore(VK_CTX.logicdevice, fs->imgavailable, nullptr);
+	vkDestroySemaphore(VK_CTX.logicdevice, fs->renderfin, nullptr);
+	vkDestroyFence(VK_CTX.logicdevice, fs->fence, nullptr);
 	delete fs;
 }
 
 framesync *
-framesync_new(const renderctx *ctx)
+framesync_new()
 {
 	auto *fs = new framesync();
 	VkSemaphoreCreateInfo semaphoreInfo{};
@@ -28,11 +28,11 @@ framesync_new(const renderctx *ctx)
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	vkCreateSemaphore(ctx->logicdevice, &semaphoreInfo, nullptr, &fs->imgavailable);
-	vkCreateSemaphore(ctx->logicdevice, &semaphoreInfo, nullptr, &fs->renderfin);
-	vkCreateFence(ctx->logicdevice, &fenceInfo, nullptr, &fs->fence);
+	vkCreateSemaphore(VK_CTX.logicdevice, &semaphoreInfo, nullptr, &fs->imgavailable);
+	vkCreateSemaphore(VK_CTX.logicdevice, &semaphoreInfo, nullptr, &fs->renderfin);
+	vkCreateFence(VK_CTX.logicdevice, &fenceInfo, nullptr, &fs->fence);
 	if (!(fs->renderfin && fs->imgavailable && fs->fence)) {
-		framesync_del(ctx, fs);
+		framesync_del(fs);
 		return nullptr;
 	}
 	return fs;
@@ -41,12 +41,12 @@ framesync_new(const renderctx *ctx)
 
 
 int
-framesync_aquire(const renderctx *ctx, const framesync *fs, int *image_index)
+framesync_aquire(const framesync *fs, int *image_index)
 {
 	uint32_t index;
-	vkWaitForFences(ctx->logicdevice, 1, &fs->fence, VK_TRUE, UINT64_MAX);
-	auto result = vkAcquireNextImageKHR(ctx->logicdevice,
-		ctx->swapchain.handle,
+	vkWaitForFences(VK_CTX.logicdevice, 1, &fs->fence, VK_TRUE, UINT64_MAX);
+	auto result = vkAcquireNextImageKHR(VK_CTX.logicdevice,
+		VK_CTX.swapchain.handle,
 		UINT64_MAX,
 		fs->imgavailable,
 		VK_NULL_HANDLE,
@@ -62,9 +62,10 @@ framesync_aquire(const renderctx *ctx, const framesync *fs, int *image_index)
 
 int
 framesync_submit(
-	const renderctx *ctx,
 	const framesync *fs,
+
 	VkCommandBuffer cmdbuf,
+
 	int image_index)
 {
 	uint32_t imageindex = image_index;
@@ -80,11 +81,11 @@ framesync_submit(
 	VkSemaphore signalSemaphores[] = { fs->renderfin };
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
-	vkResetFences(ctx->logicdevice, 1, &fs->fence);
-	if (vkQueueSubmit(ctx->graphicsqueue, 1, &submitInfo, fs->fence) != VK_SUCCESS) {
+	vkResetFences(VK_CTX.logicdevice, 1, &fs->fence);
+	if (vkQueueSubmit(VK_CTX.graphicsqueue, 1, &submitInfo, fs->fence) != VK_SUCCESS) {
 		throw std::runtime_error("failed to submit draw command buffer");
 	}
-	VkSwapchainKHR swapChains[] = { ctx->swapchain.handle };
+	VkSwapchainKHR swapChains[] = { VK_CTX.swapchain.handle };
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
@@ -93,7 +94,7 @@ framesync_submit(
 	presentInfo.pSwapchains = swapChains;
 	presentInfo.pImageIndices = &imageindex;
 	presentInfo.pResults = nullptr;
-	auto result = vkQueuePresentKHR(ctx->presentqueue, &presentInfo);
+	auto result = vkQueuePresentKHR(VK_CTX.presentqueue, &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		return -1;
 		/*TODO:

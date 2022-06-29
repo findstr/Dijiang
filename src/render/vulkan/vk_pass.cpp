@@ -1,19 +1,18 @@
 #include "vk_object.h"
-#include "renderctx.h"
 #include "vk_pass.h"
 
 namespace engine {
 namespace vulkan {
 
+//TODO:
 static VkFormat
 find_supported_format(
-		const renderctx *ctx,
 		const std::vector<VkFormat> &candidates,
 		VkImageTiling tiling, VkFormatFeatureFlags features)
 {
 	for (VkFormat fmt : candidates) {
 		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(ctx->phydevice, fmt, &props);
+		vkGetPhysicalDeviceFormatProperties(VK_CTX.phydevice, fmt, &props);
 		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
 			return fmt;
 		} else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
@@ -23,10 +22,11 @@ find_supported_format(
 	throw std::runtime_error("failed to find supported format");
 }
 
+//TODO:
 static VkFormat
-find_depth_format(const renderctx *ctx)
+find_depth_format()
 {
-	return find_supported_format(ctx,
+	return find_supported_format(
 		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -34,9 +34,8 @@ find_depth_format(const renderctx *ctx)
 
 vk_pass::vk_pass()
 {
-	auto *ctx = renderctx_get();
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = ctx->swapchain.imageformat;
+	colorAttachment.format = VK_CTX.swapchain.imageformat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -51,7 +50,7 @@ vk_pass::vk_pass()
 
 
 	VkAttachmentDescription depthAttachment{};
-	depthAttachment.format = find_depth_format(ctx);
+	depthAttachment.format = find_depth_format();
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -89,14 +88,13 @@ vk_pass::vk_pass()
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	auto result = vkCreateRenderPass(ctx->logicdevice, &renderPassInfo, nullptr, &renderpass);
+	auto result = vkCreateRenderPass(VK_CTX.logicdevice, &renderPassInfo, nullptr, &renderpass);
 	assert(result == VK_SUCCESS);
 }
 
 vk_pass::~vk_pass()
 {
-	auto *ctx = renderctx_get();
-	vkDestroyRenderPass(ctx->logicdevice, renderpass, nullptr);
+	vkDestroyRenderPass(VK_CTX.logicdevice, renderpass, nullptr);
 }
 
 VkFormat

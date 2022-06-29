@@ -1,12 +1,11 @@
 #pragma once
 #include <memory>
-#include "vulkan/renderctx.h"
+#include "vulkan/vk_ctx.h"
 #include "vulkan/forward.h"
 #include "math/math.h"
 #include "render/mesh.h"
 #include "render/material.h"
 #include "render/draw_object.h"
-#include "render/vulkan/renderctx.h"
 #include "components/camera.h"
 
 namespace engine {
@@ -19,7 +18,6 @@ public:
 	bool draw(camera *cam, const std::vector<draw_object> &drawlist);
 	vulkan::surface *surface = nullptr;
 private:
-	std::unique_ptr<vulkan::renderctx> ctx;
 	vulkan::forward *forward = nullptr;
 };
 

@@ -27,22 +27,6 @@ namespace vulkan {
 		VkExtent2D extent = {0, 0};
 		std::vector<VkImageView> imageviews;
 	};
-
-	struct renderctx {
-		VkInstance instance = VK_NULL_HANDLE;
-		VkPhysicalDevice phydevice = VK_NULL_HANDLE;
-		VkPhysicalDeviceProperties properties;
-		VkDevice logicdevice = VK_NULL_HANDLE;
-		VkQueue graphicsqueue = VK_NULL_HANDLE;
-		VkQueue presentqueue = VK_NULL_HANDLE;
-		VkDescriptorPool descriptorpool = VK_NULL_HANDLE;
-		VmaAllocator allocator = VK_NULL_HANDLE;
-		VkCommandPool commandpool;
-		swapchainst swapchain;
-	};
-
-	#define vk_ctx	renderctx_get()
-
 }}
 
-#include "renderctx.h"
+#include "vk_ctx.h"

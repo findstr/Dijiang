@@ -4,7 +4,6 @@
 #include "cmdbuf.h"
 #include "vk_buffer.h"
 #include "vk_texture2d.h"
-#include "renderctx.h"
 
 namespace engine {
 namespace vulkan {

@@ -3,8 +3,8 @@
 namespace engine {
 namespace vulkan {
 
-VkCommandBuffer cmdbuf_single_begin(const renderctx *ctx);
-void cmdbuf_single_end(const renderctx *ctx, VkCommandBuffer commandBuffer);
+VkCommandBuffer cmdbuf_single_begin();
+void cmdbuf_single_end(VkCommandBuffer commandBuffer);
 
 
 }}

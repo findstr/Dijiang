@@ -6,23 +6,23 @@
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
 #include "vk_mem_alloc.h"
+#include "vk_shader_variables.h"
 
 #include "conf.h"
 #include "vk_surface.h"
 #include "vk_texture.h"
-#include "renderctx.h"
+#include "vk_ctx.h"
 
 namespace engine {
 namespace vulkan {
 
-renderctx *CTX = nullptr;
-
-struct extent {
+struct vk_ctx_ext {
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	VkDebugReportCallbackEXT dbgcallback = VK_NULL_HANDLE;
 };
 
-static std::unordered_map<const renderctx *, extent> EXT;
+vk_ctx VK_CTX;
+static vk_ctx_ext VK_CTX_EXT;
 
 const std::vector<const char *> validationLayers = {
 	"VK_LAYER_KHRONOS_validation",
@@ -392,7 +392,7 @@ static 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKH
 	}
 
 static VkImageView
-texture_new_view(const renderctx *ctx,
+texture_new_view(const vk_ctx *ctx,
 	VkImage image,
 	VkFormat format,
 	VkImageAspectFlags aspectFlags,
@@ -413,7 +413,7 @@ texture_new_view(const renderctx *ctx,
 	createInfo.subresourceRange.levelCount = mipLevels;
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
-	if (vkCreateImageView(ctx->logicdevice, &createInfo, nullptr, &imageView) != VK_SUCCESS)
+	if (vkCreateImageView(VK_CTX.logicdevice, &createInfo, nullptr, &imageView) != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 	return imageView;
 }
@@ -421,7 +421,7 @@ texture_new_view(const renderctx *ctx,
 
 
 static swapchainst
-createSwapChain(renderctx *ctx, VkPhysicalDevice phydevice, VkDevice device, VkSurfaceKHR surface, int width, int height)
+createSwapChain(vk_ctx *ctx, VkPhysicalDevice phydevice, VkDevice device, VkSurfaceKHR surface, int width, int height)
 {
 	swapchainst swapchain;
 	auto chain = querySwapChainSupport(phydevice, surface);
@@ -466,14 +466,14 @@ createSwapChain(renderctx *ctx, VkPhysicalDevice phydevice, VkDevice device, VkS
 	swapchain.extent = extent;
 
 	std::vector<VkImage> images;
-	vkGetSwapchainImagesKHR(ctx->logicdevice, swapchain.handle, &imageCount, nullptr);
+	vkGetSwapchainImagesKHR(VK_CTX.logicdevice, swapchain.handle, &imageCount, nullptr);
 	images.resize(imageCount);
-	vkGetSwapchainImagesKHR(ctx->logicdevice, swapchain.handle, &imageCount, images.data());
+	vkGetSwapchainImagesKHR(VK_CTX.logicdevice, swapchain.handle, &imageCount, images.data());
 	swapchain.imageviews.resize(images.size());
 	for (size_t i = 0; i < images.size(); i++) {
 		swapchain.imageviews[i] = texture_new_view(ctx, images[i], swapchain.imageformat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 	}
-	return std::move(swapchain);
+	return swapchain;
 }
 
 static VkCommandPool
@@ -490,52 +490,78 @@ createCommandPool(VkPhysicalDevice phydevice, VkDevice logicdevice, VkSurfaceKHR
 	return commandpool;
 }
 
-int
-renderctx_init(renderctx *ctx, const char *name, surface *s, int width, int height)
+static void
+create_engine_descriptor_set() 
 {
-	ctx->instance = create_instance(name, conf::VERSION_MAJOR, conf::VERSION_MINOR, s);
-	auto &ext = EXT[ctx];
-	setup_debug_callback(ctx->instance,  &ext.dbgcallback);
-	surface_bind(s, ctx->instance, &ext.surface);
-	ctx->phydevice = pickPhysicalDevice(ctx->instance, ext.surface);
-	vkGetPhysicalDeviceProperties(ctx->phydevice, &ctx->properties);
-	ctx->logicdevice = createLogicalDevice(ctx->phydevice, ext.surface, &ctx->graphicsqueue, &ctx->presentqueue);
-	ctx->descriptorpool = createDescriptorPool(ctx->logicdevice);
-	ctx->allocator = vma_init(ctx->instance, ctx->phydevice, ctx->logicdevice);
-	ctx->swapchain = createSwapChain(ctx, ctx->phydevice, ctx->logicdevice, ext.surface, width, height);
-	ctx->commandpool = createCommandPool(ctx->phydevice, ctx->logicdevice, ext.surface);
-	CTX = ctx;
+	std::array<VkDescriptorSetLayoutBinding, 2> bindings;
+	auto &b0 = bindings[0];
+	b0.binding = ENGINE_PER_FRAME_BINDING;
+	b0.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	b0.descriptorCount = 1;
+	b0.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	b0.pImmutableSamplers = nullptr;
+
+	auto &b1 = bindings[1];
+	b1.binding = ENGINE_PER_DRAW_BINDING;
+	b1.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	b1.descriptorCount = 1;
+	b1.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	b1.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo ci{};
+	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	ci.bindingCount = bindings.size();
+	ci.pBindings = bindings.data();
+	auto result = vkCreateDescriptorSetLayout(VK_CTX.logicdevice, &ci, nullptr, &VK_CTX.engine_desc_set_layout);
+	assert(result == VK_SUCCESS);
+	VkDescriptorSetAllocateInfo dsa{};
+	dsa.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	dsa.descriptorPool = VK_CTX.descriptorpool;
+	dsa.descriptorSetCount = 1;
+	dsa.pSetLayouts = &VK_CTX.engine_desc_set_layout;
+	result = vkAllocateDescriptorSets(
+		VK_CTX.logicdevice, &dsa, &VK_CTX.engine_desc_set);
+	assert(result == VK_SUCCESS);
+}
+
+int
+vk_ctx_init(const char *name, surface *s, int width, int height)
+{
+	VK_CTX.instance = create_instance(name, conf::VERSION_MAJOR, conf::VERSION_MINOR, s);
+	auto &ext = VK_CTX_EXT;
+	setup_debug_callback(VK_CTX.instance,  &ext.dbgcallback);
+	surface_bind(s, VK_CTX.instance, &ext.surface);
+	VK_CTX.phydevice = pickPhysicalDevice(VK_CTX.instance, ext.surface);
+	vkGetPhysicalDeviceProperties(VK_CTX.phydevice, &VK_CTX.properties);
+	VK_CTX.logicdevice = createLogicalDevice(VK_CTX.phydevice, ext.surface, &VK_CTX.graphicsqueue, &VK_CTX.presentqueue);
+	VK_CTX.descriptorpool = createDescriptorPool(VK_CTX.logicdevice);
+	VK_CTX.allocator = vma_init(VK_CTX.instance, VK_CTX.phydevice, VK_CTX.logicdevice);
+	VK_CTX.swapchain = createSwapChain(&VK_CTX, VK_CTX.phydevice, VK_CTX.logicdevice, ext.surface, width, height);
+	VK_CTX.commandpool = createCommandPool(VK_CTX.phydevice, VK_CTX.logicdevice, ext.surface);
+	create_engine_descriptor_set();
 	std::cout << "The GPU has a minimum buffer alignment of " <<
-		ctx->properties.limits.minUniformBufferOffsetAlignment << std::endl;
+		VK_CTX.properties.limits.minUniformBufferOffsetAlignment << std::endl;
 	return 0;
 }
 
 static void
-cleanupSwapchain(const renderctx *ctx)
+cleanupSwapchain(const vk_ctx *ctx)
 {
-	for (auto view : ctx->swapchain.imageviews)
-		vkDestroyImageView(ctx->logicdevice, view, nullptr);
-	vkDestroySwapchainKHR(ctx->logicdevice, ctx->swapchain.handle, nullptr);
+	for (auto view : VK_CTX.swapchain.imageviews)
+		vkDestroyImageView(VK_CTX.logicdevice, view, nullptr);
+	vkDestroySwapchainKHR(VK_CTX.logicdevice, VK_CTX.swapchain.handle, nullptr);
 }
 
 void
-renderctx_cleanup(renderctx *ctx)
+vk_ctx_cleanup()
 {
-	cleanupSwapchain(ctx);
-	vkDestroyCommandPool(ctx->logicdevice, ctx->commandpool, nullptr);
-	vkDestroyDevice(ctx->logicdevice, nullptr);
+	cleanupSwapchain(&VK_CTX);
+	vkDestroyCommandPool(VK_CTX.logicdevice, VK_CTX.commandpool, nullptr);
+	vkDestroyDevice(VK_CTX.logicdevice, nullptr);
 	if (enableValidationLayers)
-		DestroyDebugReportCallbackEXT(ctx->instance, EXT[ctx].dbgcallback, nullptr);
-	vkDestroySurfaceKHR(ctx->instance, EXT[ctx].surface, nullptr);
-	vkDestroyInstance(ctx->instance, nullptr);
-	EXT.erase(ctx);
-	CTX = nullptr;
-}
-
-const renderctx *
-renderctx_get()
-{
-	return CTX;
+		DestroyDebugReportCallbackEXT(VK_CTX.instance, VK_CTX_EXT.dbgcallback, nullptr);
+	vkDestroySurfaceKHR(VK_CTX.instance, VK_CTX_EXT.surface, nullptr);
+	vkDestroyInstance(VK_CTX.instance, nullptr);
 }
 
 }}

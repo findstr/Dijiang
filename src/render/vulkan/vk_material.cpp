@@ -1,7 +1,6 @@
 #include "conf.h"
 #include "ubo.h"
 #include "shader.h"
-#include "renderctx.h"
 #include "vk_buffer.h"
 #include "vk_shader.h"
 #include "vk_texture.h"
@@ -16,7 +15,6 @@ namespace vulkan {
 
 vk_material::vk_material(std::shared_ptr<render::shader> &s, bool ztest)
 {
-	auto *ctx = renderctx_get();
 	this->ztest = ztest;
 	set_shader(s);
 }
@@ -26,15 +24,14 @@ vk_material::set_shader(std::shared_ptr<render::shader> &s)
 {
 	shader = s;
 	class vk_shader *rs = static_cast<class vk_shader *>(s.get());
-	auto *ctx = renderctx_get();
 	auto desc_layout = rs->desc_set_layout();
 	for (size_t i = 0; i < desc_set.size(); i++) {
 		VkDescriptorSetAllocateInfo dsa{};
 		dsa.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		dsa.descriptorPool = ctx->descriptorpool;
+		dsa.descriptorPool = VK_CTX.descriptorpool;
 		dsa.descriptorSetCount = 1;
 		dsa.pSetLayouts = &desc_layout;
-		auto result = vkAllocateDescriptorSets(ctx->logicdevice,
+		auto result = vkAllocateDescriptorSets(VK_CTX.logicdevice,
 			&dsa, &desc_set[i]);
 		if (result != VK_SUCCESS)
 			printf("====:%d\n", result);
@@ -49,7 +46,6 @@ void
 vk_material::set_texture(const std::string &name,
 	std::shared_ptr<render::texture> &tex)
 {
-	auto *ctx = renderctx_get();
 	class vk_shader *rs = static_cast<class vk_shader *>(shader.get());
 	tex_args[name] = tex;
 	VkDescriptorImageInfo imageInfo{};
@@ -81,7 +77,7 @@ vk_material::set_texture(const std::string &name,
 			dw.descriptorCount = 1;
 			dw.pImageInfo = &imageInfo;
 		}
-		vkUpdateDescriptorSets(ctx->logicdevice,
+		vkUpdateDescriptorSets(VK_CTX.logicdevice,
 			static_cast<uint32_t>(descriptorWrite.size()),
 			descriptorWrite.data(), 0, nullptr);
 	}

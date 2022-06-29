@@ -8,7 +8,6 @@
 #include "vk_format.h"
 #include "vk_filter.h"
 #include "vk_sampler_address_mode.h"
-#include "renderctx.h"
 
 namespace engine {
 namespace vulkan {
@@ -22,15 +21,15 @@ void
 vk_texture::destroy()
 {
 	if (sampler_ != VK_NULL_HANDLE) {
-		vkDestroySampler(vk_ctx->logicdevice, sampler_, nullptr);
+		vkDestroySampler(VK_CTX.logicdevice, sampler_, nullptr);
 		sampler_ = VK_NULL_HANDLE;
 	}
 	if (view != VK_NULL_HANDLE) {
-		vkDestroyImageView(vk_ctx->logicdevice, view, nullptr);
+		vkDestroyImageView(VK_CTX.logicdevice, view, nullptr);
 		view = VK_NULL_HANDLE;
 	}
 	if (image != VK_NULL_HANDLE) {
-		vmaDestroyImage(vk_ctx->allocator, image, allocation);
+		vmaDestroyImage(VK_CTX.allocator, image, allocation);
 		image = VK_NULL_HANDLE;
 	}
 }
@@ -53,7 +52,7 @@ vk_texture::sampler(const render::texture *tex)
 	samplerInfo.addressModeV = vk_address_v;
 	samplerInfo.addressModeW = vk_address_w;
 	if (tex->anisolevels > 0) {
-		int max = vk_ctx->properties.limits.maxSamplerAnisotropy;
+		int max = VK_CTX.properties.limits.maxSamplerAnisotropy;
 		samplerInfo.anisotropyEnable = VK_TRUE;
 		samplerInfo.maxAnisotropy = std::min(max, tex->anisolevels);
 	}
@@ -65,7 +64,7 @@ vk_texture::sampler(const render::texture *tex)
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = static_cast<float>(tex->miplevels);
-	auto ret = vkCreateSampler(vk_ctx->logicdevice, &samplerInfo, nullptr, &sampler_);
+	auto ret = vkCreateSampler(VK_CTX.logicdevice, &samplerInfo, nullptr, &sampler_);
 	if (ret != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 	return sampler_;
@@ -100,7 +99,7 @@ vk_texture::create(const render::texture *tex, int layer_count)
 	vaci.usage = VMA_MEMORY_USAGE_AUTO;
 	vaci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 	vaci.priority = 1.0f;
-	auto ret = vmaCreateImage(vk_ctx->allocator, &imageInfo, &vaci, &image, &allocation, nullptr);
+	auto ret = vmaCreateImage(VK_CTX.allocator, &imageInfo, &vaci, &image, &allocation, nullptr);
 	assert(ret == VK_SUCCESS);
 
 	VkImageViewCreateInfo createInfo = {};
@@ -120,7 +119,7 @@ vk_texture::create(const render::texture *tex, int layer_count)
 	createInfo.subresourceRange.levelCount = tex->miplevels;
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = layer_count;
-	ret = vkCreateImageView(vk_ctx->logicdevice, &createInfo, nullptr, &view);
+	ret = vkCreateImageView(VK_CTX.logicdevice, &createInfo, nullptr, &view);
 	assert(ret == VK_SUCCESS);
 	printf("create vk_texture:%p:%d\n", view, ret);
 }
@@ -139,7 +138,7 @@ vk_texture::transition_layout(
 	int layer_count)
 {
 	vk_format format(tex->format);
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin(vk_ctx);
+	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
 
 	VkPipelineStageFlags srcStage;
 	VkPipelineStageFlags dstStage;
@@ -191,13 +190,13 @@ vk_texture::transition_layout(
 		0, nullptr,
 		1, &barrier
 	);
-	cmdbuf_single_end(vk_ctx, commandBuffer);
+	cmdbuf_single_end(commandBuffer);
 }
 
 void
 vk_texture::fill(const render::texture *tex, vk_buffer &staging, int layer_count)
 {
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin(vk_ctx);
+	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
 
 	VkBufferImageCopy region{};
 	region.bufferOffset = 0;
@@ -220,7 +219,7 @@ vk_texture::fill(const render::texture *tex, vk_buffer &staging, int layer_count
 		1,
 		&region
 	);
-	cmdbuf_single_end(vk_ctx, commandBuffer);
+	cmdbuf_single_end(commandBuffer);
 }
 
 void
@@ -230,11 +229,11 @@ vk_texture::gen_mipmap(const render::texture *tex, int layer_count)
 		return ;
 	vk_format image_format(tex->format);
 	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(vk_ctx->phydevice, image_format, &formatProperties);
+	vkGetPhysicalDeviceFormatProperties(VK_CTX.phydevice, image_format, &formatProperties);
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
 		throw std::runtime_error("texture image format does not support linear blitting!");
 	}
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin(vk_ctx);
+	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.image = image;
@@ -315,7 +314,7 @@ vk_texture::gen_mipmap(const render::texture *tex, int layer_count)
 			0, nullptr,
 			0, nullptr,
 			1, &barrier);
-	cmdbuf_single_end(vk_ctx, commandBuffer);
+	cmdbuf_single_end(commandBuffer);
 }
 
 }

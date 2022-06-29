@@ -15,9 +15,9 @@
 #include "vulkan/vk_object.h"
 #include "utils/file.h"
 #include "conf.h"
+#include "vk_ctx.h"
 #include "vk_surface.h"
 #include "vk_texture.h"
-#include "renderctx.h"
 #include "forward.h"
 #include "painter.h"
 
@@ -30,16 +30,14 @@ void
 painter::init()
 {
 	surface = surface_new("帝江", 1024, 768);
-	ctx = std::make_unique<renderctx>();
-	auto ctx_ptr = ctx.get();
-	renderctx_init(ctx_ptr, "帝江", surface, 1024, 768);
-	forward = forward_new(ctx_ptr);
+	vk_ctx_init("帝江", surface, 1024, 768);
+	forward = forward_new();
 }
 
 void
 painter::cleanup()
 {
-	forward_del(ctx.get(), forward);
+	forward_del(forward);
 }
 
 bool
@@ -49,7 +47,7 @@ painter::draw(camera *cam, const std::vector<draw_object> &drawlist)
 		return false;
 	forward_begin(forward, drawlist.size());
 	for (auto &d:drawlist) {
-		forward_tick(cam, ctx.get(), forward, d);
+		forward_tick(cam, forward, d);
 	}
 	forward_end(forward);
 	return true;

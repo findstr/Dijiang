@@ -4,8 +4,8 @@
 namespace engine {
 namespace vulkan {
 
-VkSampler samplermgr_newsampler(const renderctx *ctx, const texture_setting &args);
-void samplermgr_delsampler(const renderctx *ctx, VkSampler sampler);
+VkSampler samplermgr_newsampler(const texture_setting &args);
+void samplermgr_delsampler(VkSampler sampler);
 
 }}
 

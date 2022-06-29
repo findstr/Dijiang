@@ -10,11 +10,11 @@ namespace vulkan {
 
 struct forward;
 
-forward *forward_new(const renderctx *ctx);
-void forward_del(const renderctx *ctx, forward *fw);
+forward *forward_new();
+void forward_del(forward *fw);
 void forward_begin(forward *fw, int obj_count);
 void forward_end(forward *fw);
-void forward_tick(camera *cam, const renderctx *ctx, forward *fw, const draw_object &draw);
+void forward_tick(camera *cam, forward *fw, const draw_object &draw);
 
 
 }}
