@@ -355,12 +355,14 @@ to_mat4(const matrix4f &m)
 static void
 update_uniformbuffer_per_frame(render::ubo::per_frame *ubo)
 {
-	ubo->engine_light_ambient = glm::vec3(1.0f);
-	ubo->engine_light_direction.x = 0.0f;
-	ubo->engine_light_direction.y = 0.0f;
-	ubo->engine_light_direction.z = 1.f;
+	float p = 15.0f;
 
-	ubo->engine_light_intensity = glm::vec3(1.0f);
+	ubo->engine_light_ambient = glm::vec3(1.0f);
+	ubo->engine_light_direction.x = p;
+	ubo->engine_light_direction.y = p*0.5f;
+	ubo->engine_light_direction.z = p;
+
+	ubo->engine_light_radiance = glm::vec3(1.0f);
 }
 
 static void

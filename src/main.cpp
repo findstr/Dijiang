@@ -8,6 +8,8 @@
 
 int main()
 {
+	//system("cd asset/shaders ./shaderc.sh");
+	system("echo %cd% && cd asset/shaders && shaderc.sh");
 	engine::init();
 	engine::run();
 	engine::cleanup();

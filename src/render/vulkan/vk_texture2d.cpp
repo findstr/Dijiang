@@ -34,7 +34,7 @@ texture2d::create(int width, int height,
 	tex->width_ = width;
 	tex->height_ = height;
 	tex->format = format;
-	tex->linear = false;
+	tex->linear = linear;
 	tex->miplevels = miplevels;
 	return tex;
 }

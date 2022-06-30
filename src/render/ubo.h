@@ -17,7 +17,7 @@ struct per_frame {
 	glm::vec3 engine_light_ambient;
 	glm::vec3 engine_light_position;
 	glm::vec3 engine_light_direction;
-	glm::vec3 engine_light_intensity;
+	glm::vec3 engine_light_radiance;
 };
 
 struct per_draw{

@@ -1,0 +1,16 @@
+version: 1
+type: texture2d
+colorspace: gamma
+format: RGBA32
+read_enable: 0
+mipmap:
+  enable: 1
+  faceout: 0
+  border_mipmap: 0
+settings:
+  aniso: 0
+  mip_bias: 0
+  wrap_u: clamp
+  wrap_v: clamp
+  wrap_w: clamp
+  filter_mode: bilinear

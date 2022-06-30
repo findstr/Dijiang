@@ -3,6 +3,6 @@
 
 #define ENGINE_MAX_INSTANCE_PER_DRAW	64
 #define ENGINE_MAX_BONE_PER_SKELETON	70
-
+#define ENGINE_PI						(3.14159265359)
 
 #endif

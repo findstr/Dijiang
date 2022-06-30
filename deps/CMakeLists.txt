@@ -60,6 +60,12 @@ if (NOT TARGET stb)
 	set_target_properties(stb PROPERTIES FOLDER ${lib_folder})
 endif()
 
+if (NOT TARGET ktx)
+	include(ktx.cmake)
+	add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+	set_target_properties(ktx PROPERTIES FOLDER ${lib_folder})
+endif()
+
 if (NOT TARGET spirv-cross)
 	add_subdirectory(spirv-cross)
 	option(SPIRV_CROSS_STATIC  "" ON)

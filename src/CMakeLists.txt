@@ -39,6 +39,9 @@ if (Vulkan_FOUND)
 	target_link_libraries(${TARGET_NAME} PRIVATE ${Vulkan_LIBRARIES})
 endif(Vulkan_FOUND)
 
+set_target_properties(${TARGET_NAME} PROPERTIES ENABLE_EXPORTS 1)
+set_target_properties(${TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ROOT_DIR}/bin)
+
 target_link_libraries(${TARGET_NAME} PRIVATE glfw)
 target_link_libraries(${TARGET_NAME} PRIVATE glm)
 target_link_libraries(${TARGET_NAME} PRIVATE yaml-cpp)
@@ -46,12 +49,12 @@ target_link_libraries(${TARGET_NAME} PRIVATE assimp::assimp)
 target_link_libraries(${TARGET_NAME} PRIVATE vk_mem)
 target_link_libraries(${TARGET_NAME} PRIVATE stb)
 target_link_libraries(${TARGET_NAME} PRIVATE lua)
+target_link_libraries(${TARGET_NAME} PRIVATE ktx)
 target_link_libraries(${TARGET_NAME} PRIVATE spirv-cross-core)
 target_link_libraries(${TARGET_NAME} PRIVATE spirv-cross-cpp)
 target_link_libraries(${TARGET_NAME} PRIVATE spirv-cross-reflect)
 target_link_libraries(${TARGET_NAME} PRIVATE spirv-cross-hlsl)
-
-set_target_properties(${TARGET_NAME} PROPERTIES ENABLE_EXPORTS 1)
-set_target_properties(${TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ROOT_DIR}/bin)
-
+ 
 add_subdirectory(lualib)
+
+

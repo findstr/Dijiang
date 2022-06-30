@@ -21,7 +21,6 @@ animator::tick(float delta)
 {
 	progress += delta / total;
 	progress -= std::floor(progress);
-	progress = 0.0f;
 	auto *skel = get_skeleton();
 	debug_pose.clear();
 	skel->apply_animation(progress, debug_pose);

@@ -39,7 +39,7 @@ vk_texture::sampler(const render::texture *tex)
 {
 	if (sampler_ != VK_NULL_HANDLE)
 		return sampler_;
-	vk_filter vkfilter(tex->filter);
+	vk_filter vkfilter(tex->filter_mode);
 	vk_sampler_address_mode vk_address_u(tex->wrap_mode_u);
 	vk_sampler_address_mode vk_address_v(tex->wrap_mode_v);
 	vk_sampler_address_mode vk_address_w(tex->wrap_mode_w);

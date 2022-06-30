@@ -8,6 +8,8 @@
 #include <assimp/Importer.hpp>      // C++ importer interface
 #include <assimp/scene.h>           // Output data structure
 #include <assimp/postprocess.h>     // Post processing flags
+#include "ktx.h"
+#include "gl_format.h"
 
 #include "yaml-cpp/yaml.h"
 #include "utils/file.h"
@@ -20,6 +22,9 @@
 #include "components/luacomponent.h"
 #include "render/texture2d.h"
 #include "render/cubemap.h"
+#include "render/texture_filter.h"
+#include "render/texture_format.h"
+#include "render/texture_wrap.h"
 #include "resource.h"
 
 
@@ -43,7 +48,7 @@ cleanup()
 }
 
 static void
-load_tex_file(const std::string &file, std::vector<uint8_t> &data, int *w, int *h, int *miplevels)
+load_tex_file(const std::string &file, std::vector<uint8_t> &data, int *w, int *h)
 {
 	int channels;
 	stbi_uc* pixels = stbi_load(file.c_str(),
@@ -53,29 +58,212 @@ load_tex_file(const std::string &file, std::vector<uint8_t> &data, int *w, int *
 		exit(0);
 	}
 	size_t image_size = *w * *h * 4;
-	int max_length = std::max(*w, *h);
-	//*miplevels = (uint32_t)(std::floor(std::log2(max_length))) + 1;
-	*miplevels = 2;
 	data.resize(image_size);
 	memcpy(data.data(), pixels, (uint32_t)image_size);
 	stbi_image_free(pixels);
 }
 
+static texture_format 
+name_to_format(const std::string &name) 
+{
+	#define ENTRY(name) \
+	{((texture_format)texture_format::##name).str(), texture_format::##name}
+	static struct {
+		std::string name;
+		texture_format value;
+	} formats[] = {
+		ENTRY(RGBA64),
+		ENTRY(RGBA32),
+		ENTRY(RGB48),
+		ENTRY(RGB24),
+	};
+	#undef ENTRY
+	for (int i = 0; i < sizeof(formats) / sizeof(formats[0]); i++) {
+		if (name == formats[i].name)
+			return formats[i].value;
+	}
+	assert(!"unsupport format");
+	return texture_format::RGBA32;
+}
+
+static texture_filter
+name_to_filter(const std::string &name) 
+{
+	#define ENTRY(name) \
+	{((texture_filter)texture_filter::##name).str(), texture_filter::##name}
+	static struct {
+		std::string name;
+		texture_filter value;
+	} formats[] = {
+		ENTRY(POINT),
+		ENTRY(BILINEAR),
+		ENTRY(TRILINEAR),
+	};
+	#undef ENTRY
+	for (int i = 0; i < sizeof(formats) / sizeof(formats[0]); i++) {
+		if (name == formats[i].name)
+			return formats[i].value;
+	}
+	assert(!"unsupport filter");
+	return texture_filter::BILINEAR;
+}
+
+static texture_wrap
+name_to_wrap(const std::string &name) 
+{
+	#define ENTRY(name) \
+	{((texture_wrap)texture_wrap::##name).str(), texture_wrap::##name}
+	static struct {
+		std::string name;
+		texture_wrap value;
+	} formats[] = {
+		ENTRY(REPEAT),
+		ENTRY(CLAMP),
+		ENTRY(MIRROR),
+		ENTRY(MIRROR_ONCE),
+	};
+	#undef ENTRY
+	for (int i = 0; i < sizeof(formats) / sizeof(formats[0]); i++) {
+		if (name == formats[i].name)
+			return formats[i].value;
+	}
+	assert(!"unsupport wrap");
+	return texture_wrap::CLAMP;
+}
+
+
+render::texture2d *
+new_tex2d_by_meta(const std::string &file, int width, int height) 
+{
+	YAML::Node root;
+	auto meta_file = file + ".meta";
+	render::texture2d *t;
+	YAML::Emitter out;
+	if (!utils::file::exist(meta_file)) {
+		YAML::Node mipmap, settings;
+		root["version"] = 1;
+		root["type"] = "texture2d";
+		root["colorspace"] = "gamma";
+		root["format"] = "RGBA32";
+		root["read_enable"] = 0;
+		
+		mipmap["enable"] = 1;
+		mipmap["faceout"] = 0;
+		mipmap["border_mipmap"] = 0;
+		
+		settings["aniso"] = 0;
+		settings["mip_bias"] = 0;
+		settings["wrap_u"] = "clamp";
+		settings["wrap_v"] = "clamp";
+		settings["wrap_w"] = "clamp";
+		settings["filter_mode"] = "bilinear";
+		
+		root["mipmap"] = mipmap;
+		root["settings"] = settings;
+		int miplevels = render::texture::mip_levels(width, height);
+		t = render::texture2d::create(width, height, texture_format::RGBA32, false, miplevels);
+		t->anisolevels = 0;
+		t->wrap_mode_u = texture_wrap::CLAMP;
+		t->wrap_mode_v = texture_wrap::CLAMP;
+		t->wrap_mode_w = texture_wrap::CLAMP;
+		t->filter_mode = texture_filter::BILINEAR;
+		out << root;
+		utils::file::save(meta_file, std::string(out.c_str()));
+	} else {
+		root = YAML::LoadFile(meta_file);
+		assert(root["type"].as<std::string>() == "texture2d");
+		auto tex_linear = root["colorspace"].as<std::string>() == "linear";
+		auto format_str = root["format"].as<std::string>();
+		int tex_miplevels = 0;
+		if (root["mipmap"]["enable"].as<int>() != 0) 
+			tex_miplevels = render::texture::mip_levels(width, height);
+		t = render::texture2d::create(width, height,
+			name_to_format(format_str), tex_linear, tex_miplevels);
+		auto settings = root["settings"];
+		t->anisolevels = settings["aniso"].as<int>();
+		t->wrap_mode_u = name_to_wrap(settings["wrap_u"].as<std::string>()); 
+		t->wrap_mode_v = name_to_wrap(settings["wrap_v"].as<std::string>());
+		t->wrap_mode_w = name_to_wrap(settings["wrap_w"].as<std::string>());
+		t->filter_mode = name_to_filter(settings["filter_mode"].as<std::string>());
+	}
+	return t;
+}
+
 std::shared_ptr<render::texture>
 load_texture2d(const std::string &file)
 {
+	bool meta_dirty = false;
 	auto &tex = tex_pool[file];
 	if (tex != nullptr)
 		return tex;
 	std::vector<uint8_t> pixels_data;
 	int width, height, miplevels;
-	load_tex_file(file, pixels_data, &width, &height, &miplevels);
-	auto t = render::texture2d::create(width, height);
+	load_tex_file(file, pixels_data, &width, &height);
+	render::texture2d *t = new_tex2d_by_meta(file, width, height);
 	t->setpixel(pixels_data);
-	t->miplevels = miplevels;
 	t->apply();
 	tex.reset(t);
 	return tex;
+}
+
+std::shared_ptr<render::texture>
+load_cubemap(const std::string &path) 
+{
+	std::vector<uint8_t> pixels_data;
+	ktxTexture *ktx_texture;
+	ktxResult result = ktxTexture_CreateFromNamedFile(path.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx_texture);
+	assert(result == KTX_SUCCESS);
+	auto *tex = render::cubemap::create(ktx_texture->baseWidth, ktx_texture->baseHeight);
+	std::shared_ptr<render::texture> tex_ptr(tex);
+	ktx_uint8_t *ktx_data = ktxTexture_GetData(ktx_texture);
+	tex->miplevels = ktx_texture->numLevels;
+	switch (ktx_texture->glFormat) { 
+	case GL_RGBA:	
+		if (ktx_texture->glType == GL_FLOAT) {
+			tex->format = texture_format::RGBA32;
+		} else if (ktx_texture->glType == GL_HALF_FLOAT) {
+			tex->format = texture_format::RGBA64;
+		} else {
+			assert(false);
+		}
+		break;
+	case GL_RGB:
+		if (ktx_texture->glType == GL_FLOAT) {
+			tex->format = texture_format::RGB24;
+		} else if (ktx_texture->glType == GL_DOUBLE) {
+			tex->format = texture_format::RGB48;
+		} else {
+			assert(false);
+		}
+		break;
+        default:
+		assert(!"unsupport glFormat");
+		break;
+	}
+	ktx_size_t ktx_tex_size = ktx_texture->baseWidth * ktx_texture->baseHeight * tex->format.size();
+	tex->format = texture_format::RGBA64;
+	pixels_data.resize(ktx_tex_size);
+	static const std::array<render::cubemap::face, render::cubemap::FACE_COUNT> faces = {
+		render::cubemap::POSITIVE_X,
+		render::cubemap::NEGATIVE_X,
+		render::cubemap::NEGATIVE_Y, 
+		render::cubemap::POSITIVE_Y,
+		render::cubemap::POSITIVE_Z, 
+		render::cubemap::NEGATIVE_Z
+	};
+	for (int face = 0; face < 6; face++) {
+		ktx_size_t offset;
+		KTX_error_code ret = ktxTexture_GetImageOffset(ktx_texture, 0, 0, face, &offset);
+		pixels_data.resize(ktx_tex_size);
+		size_t line = ktx_texture->baseWidth * tex->format.size();
+		for (int y = 0; y < ktx_texture->baseHeight; y++) {
+			memcpy(&pixels_data.data()[(ktx_texture->baseHeight - y - 1) * line],
+				&ktx_data[offset + y * line], line);
+		}
+		tex->setpixel(faces[face], pixels_data);
+	}
+	tex->apply();
+	return tex_ptr;
 }
 
 std::shared_ptr<render::texture>
@@ -86,15 +274,15 @@ load_cubemap(const std::array<std::string, render::cubemap::FACE_COUNT> &pathes)
 		render::cubemap::POSITIVE_Y, render::cubemap::NEGATIVE_Y,
 		render::cubemap::POSITIVE_Z, render::cubemap::NEGATIVE_Z
 	};
-	int width, height, miplevels;
+	int width, height;
 	std::vector<uint8_t> pixels_data;
-	load_tex_file(pathes[0], pixels_data, &width, &height, &miplevels);
+	load_tex_file(pathes[0], pixels_data, &width, &height);
 	auto *tex = render::cubemap::create(width, height);
-	tex->miplevels = miplevels;
+	tex->miplevels = render::texture::mip_levels(width, height);;
 	tex->setpixel(faces[0], pixels_data);
 	for (int i = 1; i < render::cubemap::FACE_COUNT; i++) {
-		int w, h, mip;
-		load_tex_file(pathes[i], pixels_data, &w, &h, &mip);
+		int w, h;
+		load_tex_file(pathes[i], pixels_data, &w, &h);
 		assert(w == width);
 		assert(h == height);
 		tex->setpixel(faces[i], pixels_data);
@@ -156,15 +344,20 @@ load_material(const std::string &file)
 			auto tex = load_texture2d(file);
 			m->set_texture(name, tex);
 		} else if (type == "cubemap") {
-			std::array<std::string, render::cubemap::FACE_COUNT> pathes;
-			pathes[0] = n["x+"].as<std::string>();
-			pathes[1] = n["x-"].as<std::string>();
-			pathes[2] = n["y+"].as<std::string>();
-			pathes[3] = n["y-"].as<std::string>();
-			pathes[4] = n["z+"].as<std::string>();
-			pathes[5] = n["z-"].as<std::string>();
-			auto tex = load_cubemap(pathes);
-			m->set_texture(name, tex);
+			if (n["ktx"]) {
+				auto tex = load_cubemap(n["ktx"].as<std::string>());
+				m->set_texture(name, tex);
+			} else {
+				std::array<std::string, render::cubemap::FACE_COUNT> pathes;
+				pathes[0] = n["x+"].as<std::string>();
+				pathes[1] = n["x-"].as<std::string>();
+				pathes[2] = n["y+"].as<std::string>();
+				pathes[3] = n["y-"].as<std::string>();
+				pathes[4] = n["z+"].as<std::string>();
+				pathes[5] = n["z-"].as<std::string>();
+				auto tex = load_cubemap(pathes);
+				m->set_texture(name, tex);
+			}
 		}
 	}
 	return mat;
@@ -182,8 +375,7 @@ load_mesh(const std::string &file)
 		file.c_str(),
 		aiProcess_Triangulate |
 		aiProcess_CalcTangentSpace |
-		aiProcess_FlipUVs |
-		aiProcess_GenSmoothNormals);
+		aiProcess_FlipUVs);
 	if (pScene == nullptr)
 		return std::shared_ptr<render::mesh>(nullptr);
 	const aiMesh* paiMesh = pScene->mMeshes[0];
@@ -202,7 +394,8 @@ load_mesh(const std::string &file)
 		mesh->normals.reserve(paiMesh->mNumVertices);
 		for (unsigned int i = 0 ; i < paiMesh->mNumVertices ; i++) {
 			const aiVector3D pNormal = paiMesh->mNormals[i];
-			mesh->normals.emplace_back(pNormal.x, pNormal.y, pNormal.z);
+			vector3f normal = vector3f(pNormal.x, pNormal.y, pNormal.z).normalized();
+			mesh->normals.emplace_back(normal);
 		}
 	}
 	if (paiMesh->mTangents != nullptr) {

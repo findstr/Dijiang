@@ -48,18 +48,38 @@ Texture2D tex_normal;
 Texture2D tex_roughness;
 SamplerState tex_albedo_sampler;
 
+TextureCube tex_skybox_specular;
+SamplerState tex_skybox_specular_sampler;
+TextureCube tex_skybox_irradiance;
+SamplerState tex_skybox_irradiance_sampler;
+
+
+
 float4 frag(vsout input) : SV_TARGET
 {
-	float4 albedo = tex_albedo.Sample(tex_albedo_sampler, input.uv);
-	float4 normal_packed = tex_normal.Sample(tex_albedo_sampler, input.uv);
-	float3 ambient = engine_light_ambient * engine_light_intensity;
-	float3 normal = normal_packed.xyz * 2.0 - 1.0;
-
+	engine_light_param param;
+	float4 metal_roughness = tex_roughness.Sample(tex_albedo_sampler, input.uv);
+	float3 normal = tex_normal.Sample(tex_albedo_sampler, input.uv).xyz * 2.0 - 1.0;
 	float3 world_pos = float3(input.t_to_w0.w, input.t_to_w1.w, input.t_to_w2.w);
-	float3 world_normal = normalize(float3(dot(input.t_to_w0.xyz, normal), dot(input.t_to_w1.xyz, normal), dot(input.t_to_w2.xyz, normal)));
-	float3 world_light_dir = normalize(engine_light_dir);
-	float3 world_view_dir = normalize(engine_world_view_dir(world_pos));
+	float4 albedo = tex_albedo.Sample(tex_albedo_sampler, input.uv);
+	param.albedo = albedo.rgb;
+	param.metallic = metal_roughness.z;
+	param.roughness = metal_roughness.y;
+ 
+	param.world_normal = normalize(float3(dot(input.t_to_w0.xyz, normal), dot(input.t_to_w1.xyz, normal), dot(input.t_to_w2.xyz, normal)));
+	param.world_light_dir = normalize(engine_light_dir);
+	param.world_view_dir = normalize(engine_world_view_dir(world_pos));
+	param.light_radiance = engine_light_intensity;
+		
+	const float MAX_REFLECTION_LOD = 8.0;
+	float3 R = reflect(-param.world_view_dir, param.world_normal);
+	float3 ambient = tex_skybox_irradiance.Sample(tex_skybox_irradiance_sampler, param.world_normal).rgb;
+	float3 prefilterColor = tex_skybox_specular.SampleLevel(tex_skybox_specular_sampler, R, param.roughness * MAX_REFLECTION_LOD).rgb;
 	
-	return float4(engine_light_blin_phong(albedo.rgb, 1.0, engine_light_dir, world_view_dir, world_normal), albedo.a);
+
+	param.env_ambient = ambient;
+	param.env_reflection = prefilterColor;
+	
+	return float4(engine_light_pbs(param), albedo.a);
 }
 
