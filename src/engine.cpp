@@ -1,4 +1,3 @@
-#include <chrono>
 #include "luavm.h"
 #include "resource/resource.h"
 #include "render/painter.h"
@@ -10,50 +9,59 @@
 
 namespace engine {
 
-struct {
-	render::painter render;
-	std::vector<draw_object> drawlist;
-        std::chrono::time_point<std::chrono::high_resolution_clock> last_tick;
-} E;
-
 void
-init()
+engine::init()
 {
 	luavm::init();
-	E.render.init();
+	render.init();
 	resource::init();
 	render::debugger::inst().init();
-}
-
-void
-run()
-{
 	level::load("asset/main.level");
-	auto cameras = camera::all_cameras();
-	bool running = true;
-	E.last_tick = std::chrono::high_resolution_clock::now();
-	while (running) {
-		auto now = std::chrono::high_resolution_clock::now();
-		float delta = std::chrono::duration<float, std::chrono::seconds::period>(
-			now - E.last_tick).count();
-		E.last_tick = now;
-		render::debugger::inst().begin();
-		input::update(delta);
-		level::tick_all(delta);
-		for (auto cam:cameras) {
-			E.drawlist.clear();
-			level::cull(cam, E.drawlist);
-			render::debugger::inst().cull(cam, E.drawlist);
-			running = E.render.draw(cam, E.drawlist) && running;
-		}
-	}
+}
+
+bool
+engine::pre_tick(float delta)
+{
+	(void)delta;
+	bool ret = render.framebegin();
+	render::debugger::inst().begin();
+	return ret;
 }
 
 void
-cleanup()
+engine::tick(float delta)
 {
-	E.render.cleanup();
+	input::update(delta);
+	level::tick_all(delta);
 }
+
+void
+engine::post_tick(float delta)
+{
+	(void)delta;	
+	render.frameend();
+}
+
+
+void
+engine::cleanup()
+{
+	render.cleanup();
+}
+
+	
+void
+engine::get_resolution(int *width, int *height)
+{
+	render.get_resolution(width, height);
+}
+
+void
+engine::set_viewport(int x, int y, int width, int height)
+{
+	render.set_viewport(x, y, width, height);
+}
+
 
 }
 

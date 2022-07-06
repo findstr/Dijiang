@@ -68,6 +68,10 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	inputAssemblyState.topology = primitive_topolgy;
 	inputAssemblyState.primitiveRestartEnable = VK_FALSE;
 
+	VkRect2D scissor = {};
+	scissor.offset = { 0, 0 };
+	scissor.extent = VK_CTX.swapchain.extent;
+
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -75,10 +79,6 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	viewport.height = (float)VK_CTX.swapchain.extent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = VK_CTX.swapchain.extent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -136,11 +136,10 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 
 	VkDynamicState dynamicStates[] = {
 		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_LINE_WIDTH,
 	};
 	VkPipelineDynamicStateCreateInfo dynamicState = {};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.dynamicStateCount = 2;
+	dynamicState.dynamicStateCount = 1;
 	dynamicState.pDynamicStates = dynamicStates;
 
 	VkDescriptorSetLayout shader_layout = shader->desc_set_layout();
@@ -187,7 +186,7 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	pipelineInfo.pMultisampleState = &multisampling;
 	pipelineInfo.pDepthStencilState = &depthStencil;
 	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.pDynamicState = nullptr;
+	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = pipelinelayout;
 	pipelineInfo.renderPass = pass->get_renderpass();
 	pipelineInfo.subpass = 0;

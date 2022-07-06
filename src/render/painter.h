@@ -15,6 +15,10 @@ class painter {
 public:
 	void init();
 	void cleanup();
+	bool framebegin();
+	void frameend();
+	void get_resolution(int *x, int *y);
+	void set_viewport(int x, int y, int width, int height);
 	bool draw(camera *cam, const std::vector<draw_object> &drawlist);
 	vulkan::surface *surface = nullptr;
 private:

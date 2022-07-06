@@ -32,6 +32,20 @@ painter::init()
 	surface = surface_new("帝江", 1024, 768);
 	vk_ctx_init("帝江", surface, 1024, 768);
 	forward = forward_new();
+	surface_initui(surface, &VK_CTX.surface);
+}
+	
+void
+painter::get_resolution(int *x, int *y)
+{
+	*x = VK_CTX.swapchain.extent.width;
+	*y = VK_CTX.swapchain.extent.height;
+}
+	
+void
+painter::set_viewport(int x, int y, int width, int height)
+{
+	vk_ctx_set_viewport(x, y, width, height);
 }
 
 void
@@ -41,15 +55,27 @@ painter::cleanup()
 }
 
 bool
+painter::framebegin() 
+{
+	if (surface_framebegin(surface) != 0)
+		return false;
+	forward_begin(forward, 1024);
+	return true;
+}
+
+void
+painter::frameend() 
+{
+	surface_frameend(surface);
+	forward_end(forward);
+}
+
+bool
 painter::draw(camera *cam, const std::vector<draw_object> &drawlist)
 {
-	if (surface_poll(surface) != 0)
-		return false;
-	forward_begin(forward, drawlist.size());
 	for (auto &d:drawlist) {
 		forward_tick(cam, forward, d);
 	}
-	forward_end(forward);
 	return true;
 }
 

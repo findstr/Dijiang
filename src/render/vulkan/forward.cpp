@@ -410,7 +410,7 @@ forward_begin(forward *fw, int obj_count)
 	std::array<VkClearValue, 2> clearColor{};
 	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
 	clearColor[1].depthStencil = { 1.0f, 0 };
-
+	vk_ctx_set_cmdbuf(rf.cmdbuf);
 	vkResetCommandBuffer(rf.cmdbuf, 0);
 
 	VkCommandBufferBeginInfo begin{};
@@ -430,7 +430,7 @@ forward_begin(forward *fw, int obj_count)
 	renderPassInfo.pClearValues = clearColor.data();
 	vkCmdBeginRenderPass(rf.cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 	fw->uniform_per_draw.frame_begin(fw->frameidx, obj_count);
-	fw->uniform_per_frame.frame_begin(fw->frameidx, 1);
+	fw->uniform_per_frame.frame_begin(fw->frameidx, 2);
 	std::tie(fw->per_frame_buffer, fw->per_frame_offset) = fw->uniform_per_frame.per_begin();
 	update_uniformbuffer_per_frame(fw->per_frame_buffer);
 }
@@ -467,6 +467,8 @@ forward_tick(camera *cam, forward *fw, const draw_object &draw)
 
 
 	vkCmdBindPipeline(rf.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline->handle);
+
+	vkCmdSetViewport(rf.cmdbuf, 0, 1, &VK_CTX.viewport);
 
 	auto vertexBuffer = mesh->vertex->handle;
 	auto indexBuffer = mesh->index->handle;

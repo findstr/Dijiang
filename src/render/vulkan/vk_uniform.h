@@ -45,6 +45,7 @@ private:
 	};
 	size_t size_aligned = 0;
 	size_t offset = 0;
+	int frame_index = 0;
 	uniform_buffer *main = nullptr;
 	std::array<uniform_buffer, conf::MAX_FRAMES_IN_FLIGHT> buffers;
 public:
@@ -73,8 +74,10 @@ public:
 		}
 	}
 	void frame_end() {
-		if (offset == main->buffer.size)
+		if (++frame_index == conf::MAX_FRAMES_IN_FLIGHT) {
+			frame_index = 0;
 			offset = 0;
+		}
 	}
 	std::tuple<T *, int> per_begin() {
 		void *data = main->buffer.map();

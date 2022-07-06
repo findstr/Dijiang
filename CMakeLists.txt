@@ -13,12 +13,15 @@ if(NOT CMAKE_HOST_WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "-O0")
 endif()
 
+add_compile_options(-DIS_EDITOR)
+
 set(ROOT_DIR "${PROJECT_SOURCE_DIR}")
 set(DEPS_DIR "${ROOT_DIR}/deps")
 
 include_directories(${DEPS_DIR}/Eigen3)
 include_directories(${DEPS_DIR}/stb)
 include_directories(${DEPS_DIR}/lua)
+include_directories(${DEPS_DIR}/imgui)
 include_directories(${DEPS_DIR}/spirv-cross)
 include_directories(${DEPS_DIR}/vk_mem)
 include_directories(${DEPS_DIR}/ktx/include)

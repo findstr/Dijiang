@@ -21,12 +21,7 @@ namespace vulkan {
 		VmaAllocation allocation = VK_NULL_HANDLE;
 	};
 
-	struct swapchainst {
-		VkSwapchainKHR handle = VK_NULL_HANDLE;
-		VkFormat imageformat;
-		VkExtent2D extent = {0, 0};
-		std::vector<VkImageView> imageviews;
-	};
+
 }}
 
 #include "vk_ctx.h"
