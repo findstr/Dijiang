@@ -3,6 +3,7 @@
 #include "imgui_internal.h"
 #include "components/camera.h"
 #include "render/draw_object.h"
+#include "system/render_system.h"
 #include "level.h"
 #include "gameview.h"
 
@@ -42,12 +43,12 @@ gameview::tick(engine *e, float delta)
 
 #endif
 	ImGui::End();
-	e->render.set_viewport(window_pos.x, window_pos.y, window_size.x, window_size.y);
 	auto cameras = camera::all_cameras();
 	for (auto cam:cameras) {
 		drawlist.clear();
 		level::cull(cam, drawlist);
-		e->render.draw(cam, drawlist);
+		for (auto &d:drawlist) 
+		RENDER_SYSTEM.draw(cam, d);
 	}
 }
 

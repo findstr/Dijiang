@@ -1,6 +1,5 @@
 #include "luavm.h"
 #include "resource/resource.h"
-#include "render/painter.h"
 #include "render/input.h"
 #include "render/debugger.h"
 #include "level.h"

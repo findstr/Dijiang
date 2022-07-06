@@ -9,6 +9,7 @@ namespace editor {
 class sceneview {
 public:
 	sceneview();
+	void pre_tick(engine *e, float delta);
 	void tick(engine *e, float delta);
 public:
 	const std::string title;

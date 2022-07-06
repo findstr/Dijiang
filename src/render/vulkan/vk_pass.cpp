@@ -4,34 +4,6 @@
 namespace engine {
 namespace vulkan {
 
-//TODO:
-static VkFormat
-find_supported_format(
-		const std::vector<VkFormat> &candidates,
-		VkImageTiling tiling, VkFormatFeatureFlags features)
-{
-	for (VkFormat fmt : candidates) {
-		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(VK_CTX.phydevice, fmt, &props);
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
-			return fmt;
-		} else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
-			return fmt;
-		}
-	}
-	throw std::runtime_error("failed to find supported format");
-}
-
-//TODO:
-static VkFormat
-find_depth_format()
-{
-	return find_supported_format(
-		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-}
-
 vk_pass::vk_pass()
 {
 	VkAttachmentDescription colorAttachment = {};
@@ -50,7 +22,7 @@ vk_pass::vk_pass()
 
 
 	VkAttachmentDescription depthAttachment{};
-	depthAttachment.format = find_depth_format();
+	depthAttachment.format = VK_CTX.depth_format;
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;

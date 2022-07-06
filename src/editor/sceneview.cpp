@@ -3,6 +3,7 @@
 #include "level.h"
 #include "imgui_internal.h"
 #include "sceneview.h"
+#include "render/debugger.h"
 
 namespace engine {
 namespace editor {
@@ -11,6 +12,12 @@ sceneview::sceneview() :
 	title("Scene")
 {
 
+}
+
+void
+sceneview::pre_tick(engine *e, float delta)
+{
+	render::debugger::inst().begin();
 }
 
 void
@@ -36,6 +43,7 @@ sceneview::tick(engine *e, float delta)
 	window_size.y *= main_viewport->DpiScale;
 
 #endif
+	/*
 	e->set_viewport(window_pos.x, window_pos.y, window_size.x, window_size.y);
 	ImGui::End();
 	e->render.set_viewport(window_pos.x, window_pos.y, window_size.x, window_size.y);
@@ -45,6 +53,7 @@ sceneview::tick(engine *e, float delta)
 		level::cull(cam, drawlist);
 		e->render.draw(cam, drawlist);
 	}
+	*/
 }
 
 

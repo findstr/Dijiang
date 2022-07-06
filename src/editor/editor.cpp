@@ -22,7 +22,7 @@ editor::cleanup()
 void
 editor::pre_tick(float delta)
 {
-
+        sceneview.pre_tick(engine, delta);
 }
 
 void
@@ -37,7 +37,7 @@ editor::draw_menu()
         const ImGuiViewport* main_viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(main_viewport->WorkPos, ImGuiCond_Always);
         std::array<int, 2> window_size = {1024, 768};
-        engine->get_resolution(&window_size[0], &window_size[1]);
+        //->get_resolution(&window_size[0], &window_size[1]);
         ImGui::SetNextWindowSize(ImVec2((float)window_size[0], (float)window_size[1]), ImGuiCond_Always);
 
         ImGui::SetNextWindowViewport(main_viewport->ID);

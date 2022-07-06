@@ -275,6 +275,7 @@ int
 surface_framebegin(struct surface *s)
 {
 	if (glfwWindowShouldClose(s->window)) {
+		vkQueueWaitIdle(VK_CTX.graphicsqueue);
 		return -1;
 	}
 	glfwPollEvents();

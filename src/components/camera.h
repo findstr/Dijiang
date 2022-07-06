@@ -2,6 +2,7 @@
 #include <vector>
 #include "math/math.h"
 #include "math/rect.h"
+#include "draw_object.h"
 #include "gameobject.h"
 #include "component.h"
 
@@ -11,6 +12,7 @@ class camera: public component {
 public:
 	camera(gameobject *go);
 	~camera();
+public:
 	const std::string type() override { return "camera"; }
 	vector3f up() { return transform->rotation * vector3f(0, 1, 0); }
 	vector3f left() { return transform->rotation * vector3f(-1, 0, 0); }
@@ -18,11 +20,15 @@ public:
 	vector3f forward() { return transform->rotation * vector3f(0, 0, 1); }
 	vector3f back() { return transform->rotation * vector3f(0, 0, -1); }
 public:
+	void render();
+public:
 	float fov = 30;
 	float aspect = 16.0f/9.9f;
 	float clip_near_plane = 1.f;
 	float clip_far_plane = 100.f;
-	rect viewport;
+	rect viewport = rect(0.f, 0.f, 1.f, 1.f);
+private:
+	std::vector<draw_object> draw_list;
 /////////static
 public:
 	static const std::vector<camera *> &all_cameras();

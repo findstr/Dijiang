@@ -13,7 +13,7 @@ if(NOT CMAKE_HOST_WIN32)
 	set(CMAKE_CXX_FLAGS_RELEASE "-O0")
 endif()
 
-add_compile_options(-DIS_EDITOR)
+add_compile_options(-DIS_EDITOR -DUSE_VULKAN)
 
 set(ROOT_DIR "${PROJECT_SOURCE_DIR}")
 set(DEPS_DIR "${ROOT_DIR}/deps")

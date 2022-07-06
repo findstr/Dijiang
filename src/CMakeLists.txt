@@ -31,6 +31,7 @@ aux_source_directory(./resource SOURCES)
 aux_source_directory(./render/vulkan SOURCES)
 aux_source_directory(./components SOURCES)
 aux_source_directory(./animation SOURCES)
+aux_source_directory(./system SOURCES)
 
 add_executable(${TARGET_NAME} ${SOURCES})
 

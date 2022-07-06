@@ -3,6 +3,8 @@
 #include <vulkan/vulkan.h>
 #include "vulkan/vk_object.h"
 #include "vulkan/vk_surface.h"
+#include "conf.h"
+
 namespace engine {
 namespace vulkan {
 	struct swapchainst {
@@ -17,7 +19,6 @@ namespace vulkan {
 		VkPhysicalDevice phydevice = VK_NULL_HANDLE;
 		VkPhysicalDeviceProperties properties;
 		VkDevice logicdevice = VK_NULL_HANDLE;
-		int graphicsfamily = -1;
 		VkQueue graphicsqueue = VK_NULL_HANDLE;
 		VkQueue presentqueue = VK_NULL_HANDLE;
 		VkDescriptorPool descriptorpool = VK_NULL_HANDLE;
@@ -28,13 +29,17 @@ namespace vulkan {
 		swapchainst swapchain;
 		VkSurfaceKHR surface = VK_NULL_HANDLE;
 		VkDebugReportCallbackEXT dbgcallback = VK_NULL_HANDLE;
+		VkFormat depth_format;
+		VkRenderPass render_pass;
+		int graphicsfamily = -1;
+		int frame_index = 0;
 		VkCommandBuffer cmdbuf = VK_NULL_HANDLE;
-		VkViewport viewport;
+		std::array<VkCommandBuffer, conf::MAX_FRAMES_IN_FLIGHT> cmdbufs;
 	};
 	extern const struct vk_ctx VK_CTX;
 	int vk_ctx_init(const char *name, surface *s, int width, int height);
-	void vk_ctx_set_cmdbuf(VkCommandBuffer cmdbuf);
-	void vk_ctx_set_viewport(float x, float y, float width, float height);
+	void vk_ctx_frame_begin();
+	void vk_ctx_frame_end();
 	void vk_ctx_cleanup();
 }}
 

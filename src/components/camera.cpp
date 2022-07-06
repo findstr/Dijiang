@@ -1,3 +1,4 @@
+#include "level.h"
 #include "camera.h"
 
 namespace engine {
@@ -9,7 +10,16 @@ camera::camera(gameobject *go) : component(go)
 
 camera::~camera()
 {
-	std::erase(camera_list, this);
+	if (camera_list.size() > 0)
+		std::erase(camera_list, this);
+}
+
+void
+camera::render()
+{
+	level::cull(this, draw_list);
+
+
 }
 
 std::vector<camera *> camera::camera_list;
