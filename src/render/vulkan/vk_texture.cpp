@@ -21,11 +21,11 @@ void
 vk_texture::destroy()
 {
 	if (sampler_ != VK_NULL_HANDLE) {
-		vkDestroySampler(VK_CTX.logicdevice, sampler_, nullptr);
+		vkDestroySampler(VK_CTX.device, sampler_, nullptr);
 		sampler_ = VK_NULL_HANDLE;
 	}
 	if (view != VK_NULL_HANDLE) {
-		vkDestroyImageView(VK_CTX.logicdevice, view, nullptr);
+		vkDestroyImageView(VK_CTX.device, view, nullptr);
 		view = VK_NULL_HANDLE;
 	}
 	if (image != VK_NULL_HANDLE) {
@@ -64,7 +64,7 @@ vk_texture::sampler(const render::texture *tex)
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = static_cast<float>(tex->miplevels);
-	auto ret = vkCreateSampler(VK_CTX.logicdevice, &samplerInfo, nullptr, &sampler_);
+	auto ret = vkCreateSampler(VK_CTX.device, &samplerInfo, nullptr, &sampler_);
 	if (ret != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 	return sampler_;
@@ -119,7 +119,7 @@ vk_texture::create(const render::texture *tex, int layer_count)
 	createInfo.subresourceRange.levelCount = tex->miplevels;
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = layer_count;
-	ret = vkCreateImageView(VK_CTX.logicdevice, &createInfo, nullptr, &view);
+	ret = vkCreateImageView(VK_CTX.device, &createInfo, nullptr, &view);
 	assert(ret == VK_SUCCESS);
 	printf("create vk_texture:%p:%d\n", view, ret);
 }

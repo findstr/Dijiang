@@ -135,11 +135,14 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	colorBlending.blendConstants[3] = 0.0f;
 
 	VkDynamicState dynamicStates[] = {
+	#if IS_EDITOR 
+		VK_DYNAMIC_STATE_SCISSOR,
+	#endif
 		VK_DYNAMIC_STATE_VIEWPORT,
 	};
 	VkPipelineDynamicStateCreateInfo dynamicState = {};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.dynamicStateCount = 1;
+	dynamicState.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
 	dynamicState.pDynamicStates = dynamicStates;
 
 	VkDescriptorSetLayout shader_layout = shader->desc_set_layout();
@@ -150,7 +153,7 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	pipelineLayoutInfo.pSetLayouts = layouts;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = 0;
-	if (vkCreatePipelineLayout(VK_CTX.logicdevice, &pipelineLayoutInfo, nullptr, &pipelinelayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(VK_CTX.device, &pipelineLayoutInfo, nullptr, &pipelinelayout) != VK_SUCCESS)
 		return nullptr;
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};
@@ -193,7 +196,7 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
 	printf("create pipeline begin\n");
-	if (vkCreateGraphicsPipelines(VK_CTX.logicdevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines(VK_CTX.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		return nullptr;
 	printf("create pipeline end\n");
 	return new vk_pipeline(pipeline, pipelinelayout);
@@ -201,8 +204,8 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 
 vk_pipeline::~vk_pipeline()
 {
-	vkDestroyPipeline(VK_CTX.logicdevice, handle, nullptr);
-	vkDestroyPipelineLayout(VK_CTX.logicdevice, layout, nullptr);
+	vkDestroyPipeline(VK_CTX.device, handle, nullptr);
+	vkDestroyPipelineLayout(VK_CTX.device, layout, nullptr);
 }
 
 }}

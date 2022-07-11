@@ -410,7 +410,7 @@ texture_new_view(const vk_ctx *ctx,
 	createInfo.subresourceRange.levelCount = mipLevels;
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
-	if (vkCreateImageView(CTX.logicdevice, &createInfo, nullptr, &imageView) != VK_SUCCESS)
+	if (vkCreateImageView(CTX.device, &createInfo, nullptr, &imageView) != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 	return imageView;
 }
@@ -464,9 +464,9 @@ createSwapChain(vk_ctx *ctx, VkPhysicalDevice phydevice, VkDevice device, VkSurf
 	swapchain.extent = extent;
 
 	std::vector<VkImage> images;
-	vkGetSwapchainImagesKHR(CTX.logicdevice, swapchain.handle, &imageCount, nullptr);
+	vkGetSwapchainImagesKHR(CTX.device, swapchain.handle, &imageCount, nullptr);
 	images.resize(imageCount);
-	vkGetSwapchainImagesKHR(CTX.logicdevice, swapchain.handle, &imageCount, images.data());
+	vkGetSwapchainImagesKHR(CTX.device, swapchain.handle, &imageCount, images.data());
 	swapchain.imageviews.resize(images.size());
 	for (size_t i = 0; i < images.size(); i++) {
 		swapchain.imageviews[i] = texture_new_view(ctx, images[i], swapchain.imageformat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
@@ -491,7 +491,7 @@ createCommandPool(VkPhysicalDevice phydevice, VkDevice logicdevice, VkSurfaceKHR
 static void
 create_engine_descriptor_set() 
 {
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings;
+	std::array<VkDescriptorSetLayoutBinding, 3> bindings;
 	auto &b0 = bindings[0];
 	b0.binding = ENGINE_PER_FRAME_BINDING;
 	b0.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -500,25 +500,33 @@ create_engine_descriptor_set()
 	b0.pImmutableSamplers = nullptr;
 
 	auto &b1 = bindings[1];
-	b1.binding = ENGINE_PER_DRAW_BINDING;
+	b1.binding = ENGINE_PER_CAMERA_BINDING;
 	b1.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	b1.descriptorCount = 1;
 	b1.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	b1.pImmutableSamplers = nullptr;
 
+	auto &b2 = bindings[2];
+	b2.binding = ENGINE_PER_OBJECT_BINDING;
+	b2.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	b2.descriptorCount = 1;
+	b2.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	b2.pImmutableSamplers = nullptr;
+
 	VkDescriptorSetLayoutCreateInfo ci{};
 	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	ci.bindingCount = bindings.size();
 	ci.pBindings = bindings.data();
-	auto result = vkCreateDescriptorSetLayout(CTX.logicdevice, &ci, nullptr, &CTX.engine_desc_set_layout);
+	auto result = vkCreateDescriptorSetLayout(CTX.device, &ci, nullptr, &CTX.engine_desc_set_layout);
 	assert(result == VK_SUCCESS);
+	VkDescriptorSetLayout layouts[] = {CTX.engine_desc_set_layout, CTX.engine_desc_set_layout};
 	VkDescriptorSetAllocateInfo dsa{};
 	dsa.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	dsa.descriptorPool = CTX.descriptorpool;
-	dsa.descriptorSetCount = 1;
-	dsa.pSetLayouts = &CTX.engine_desc_set_layout;
+	dsa.descriptorSetCount = conf::MAX_FRAMES_IN_FLIGHT;
+	dsa.pSetLayouts = layouts;
 	result = vkAllocateDescriptorSets(
-		CTX.logicdevice, &dsa, &CTX.engine_desc_set);
+		CTX.device, &dsa, CTX.engine_desc_set);
 	assert(result == VK_SUCCESS);
 }
 
@@ -606,7 +614,7 @@ new_renderpass()
 	renderPassInfo.pDependencies = &dependency;
 	
 	VkRenderPass renderpass;
-	auto ret = vkCreateRenderPass(VK_CTX.logicdevice, &renderPassInfo, nullptr, &renderpass);
+	auto ret = vkCreateRenderPass(VK_CTX.device, &renderPassInfo, nullptr, &renderpass);
 	assert(ret == VK_SUCCESS);
 	return renderpass;
 }
@@ -620,11 +628,11 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	surface_bind(s, CTX.instance, &ext.surface);
 	CTX.phydevice = pickPhysicalDevice(CTX.instance, ext.surface);
 	vkGetPhysicalDeviceProperties(CTX.phydevice, &CTX.properties);
-	CTX.logicdevice = createLogicalDevice(CTX.phydevice, ext.surface, &CTX.graphicsqueue, &CTX.presentqueue);
-	CTX.descriptorpool = createDescriptorPool(CTX.logicdevice);
-	CTX.allocator = vma_init(CTX.instance, CTX.phydevice, CTX.logicdevice);
-	CTX.swapchain = createSwapChain(&CTX, CTX.phydevice, CTX.logicdevice, ext.surface, width, height);
-	CTX.commandpool = createCommandPool(CTX.phydevice, CTX.logicdevice, ext.surface);
+	CTX.device = createLogicalDevice(CTX.phydevice, ext.surface, &CTX.graphicsqueue, &CTX.presentqueue);
+	CTX.descriptorpool = createDescriptorPool(CTX.device);
+	CTX.allocator = vma_init(CTX.instance, CTX.phydevice, CTX.device);
+	CTX.swapchain = createSwapChain(&CTX, CTX.phydevice, CTX.device, ext.surface, width, height);
+	CTX.commandpool = createCommandPool(CTX.phydevice, CTX.device, ext.surface);
 	CTX.surface = ext.surface;
 
 	VkResult result;
@@ -633,7 +641,7 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	cba.commandPool = VK_CTX.commandpool;
 	cba.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	cba.commandBufferCount = CTX.cmdbufs.size();;
-	result = vkAllocateCommandBuffers(VK_CTX.logicdevice, &cba, CTX.cmdbufs.data());
+	result = vkAllocateCommandBuffers(VK_CTX.device, &cba, CTX.cmdbufs.data());
 	if (result != VK_SUCCESS) {
 		fprintf(stderr, "[render] new_renderframe result:%d\n", result);
 		return -1;
@@ -644,6 +652,22 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	std::cout << "The GPU has a minimum buffer alignment of " <<
 		CTX.properties.limits.minUniformBufferOffsetAlignment << std::endl;
 	return 0;
+}
+
+static void
+cleanupSwapchain(const vk_ctx *ctx)
+{
+	for (auto view : CTX.swapchain.imageviews)
+		vkDestroyImageView(CTX.device, view, nullptr);
+	vkDestroySwapchainKHR(CTX.device, CTX.swapchain.handle, nullptr);
+}
+	
+void
+vk_ctx_recreate_swapchain(int width, int height)
+{
+	vkDeviceWaitIdle(VK_CTX.device);
+	cleanupSwapchain(&VK_CTX);
+	CTX.swapchain = createSwapChain(&CTX, CTX.phydevice, CTX.device, CTX.surface, width, height);
 }
 
 void
@@ -658,20 +682,15 @@ vk_ctx_frame_end()
 	CTX.frame_index = (CTX.frame_index + 1) % conf::MAX_FRAMES_IN_FLIGHT;
 }
 
-static void
-cleanupSwapchain(const vk_ctx *ctx)
-{
-	for (auto view : CTX.swapchain.imageviews)
-		vkDestroyImageView(CTX.logicdevice, view, nullptr);
-	vkDestroySwapchainKHR(CTX.logicdevice, CTX.swapchain.handle, nullptr);
-}
+
 
 void
 vk_ctx_cleanup()
 {
 	cleanupSwapchain(&CTX);
-	vkDestroyCommandPool(CTX.logicdevice, CTX.commandpool, nullptr);
-	vkDestroyDevice(CTX.logicdevice, nullptr);
+	vkDestroyRenderPass(CTX.device, CTX.render_pass, nullptr);
+	vkDestroyCommandPool(CTX.device, CTX.commandpool, nullptr);
+	vkDestroyDevice(CTX.device, nullptr);
 	if (enableValidationLayers)
 		DestroyDebugReportCallbackEXT(CTX.instance, CTX.dbgcallback, nullptr);
 	vkDestroySurfaceKHR(CTX.instance, CTX.surface, nullptr);

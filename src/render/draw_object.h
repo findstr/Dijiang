@@ -1,7 +1,9 @@
 #pragma once
+#include "gameobject.h"
 #include "math/transform.h"
 #include "render/mesh.h"
 #include "render/material.h"
+#include "animation/skeleton.h"
 
 namespace engine {
 
@@ -16,18 +18,21 @@ struct draw_object {
 	draw_object(const transform &trans,
 		render::mesh *m,
 		render::material *mat,
-		const std::vector<matrix4f> &pose) :
+		const std::vector<animation::skeleton::pose> &pose) :
 		position(trans.position),
 		rotation(trans.rotation),
 		scale(trans.scale),
 		mesh(m), material(mat),
-		skeleton_pose(pose) {}
+		skeleton_pose(&pose) {}
 	vector3f position;
 	quaternion rotation;
 	vector3f scale;
 	render::mesh *mesh;
 	render::material *material;
-	std::vector<matrix4f> skeleton_pose;
+	const std::vector<animation::skeleton::pose> *skeleton_pose = nullptr;
+#ifdef IS_EDITOR
+	gameobject *go = nullptr;
+#endif
 };
 
 }

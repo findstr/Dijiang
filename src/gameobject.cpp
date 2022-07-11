@@ -13,8 +13,9 @@ gameobject::gameobject(int id, const std::string &n)
 
 gameobject::~gameobject()
 {
-	for (auto c:components)
+	for (auto c:components) {
 		delete c;
+	}
 	components.clear();
 }
 
@@ -47,6 +48,12 @@ gameobject::get_component(const std::string &type)
 			return c;
 	}
 	return nullptr;
+}
+	
+const std::vector<component *> 
+gameobject::get_all_components() const
+{
+	return components;
 }
 
 void

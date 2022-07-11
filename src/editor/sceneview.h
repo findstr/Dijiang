@@ -1,7 +1,10 @@
 #pragma once
 #include <string>
+#include <memory>
 #include "engine.h"
-#include "render/draw_object.h"
+#include "math/math.h"
+#include "gameobject.h"
+#include "scene_camera.h"
 
 namespace engine {
 namespace editor {
@@ -14,8 +17,11 @@ public:
 public:
 	const std::string title;
 	bool is_open = true;
+	bool gizmos_show_skeleton = false;
 private:
-	std::vector<draw_object> drawlist;
+	vector2f mouse_position;
+	std::unique_ptr<gameobject> cam_go;
+	std::unique_ptr<scene_camera> camera;
 };
 
 }}

@@ -149,7 +149,7 @@ fonts_upload(surface *s)
 	allocInfo.commandBufferCount          = 1;
 
 	VkCommandBuffer commandBuffer = {};
-	if (vkAllocateCommandBuffers(VK_CTX.logicdevice, &allocInfo, &commandBuffer) != VK_SUCCESS) {
+	if (vkAllocateCommandBuffers(VK_CTX.device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate command buffers!");
 	}
 
@@ -175,7 +175,7 @@ fonts_upload(surface *s)
 	vkQueueSubmit(VK_CTX.graphicsqueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(VK_CTX.graphicsqueue);
 
-	vkFreeCommandBuffers(VK_CTX.logicdevice, VK_CTX.commandpool, 1, &commandBuffer);
+	vkFreeCommandBuffers(VK_CTX.device, VK_CTX.commandpool, 1, &commandBuffer);
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 }
 
@@ -213,7 +213,7 @@ imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
 	ImGui_ImplVulkan_InitInfo init_info = {};
 	init_info.Instance                  = VK_CTX.instance;
 	init_info.PhysicalDevice            = VK_CTX.phydevice;
-	init_info.Device                    = VK_CTX.logicdevice;
+	init_info.Device                    = VK_CTX.device;
 	init_info.QueueFamily               = VK_CTX.graphicsfamily;
 	init_info.Queue                     = VK_CTX.graphicsqueue;
 	init_info.DescriptorPool            = VK_CTX.descriptorpool;
@@ -255,6 +255,12 @@ surface_del(surface *s)
 	delete s;
 }
 
+void
+surface_size(surface *s, int *width, int *height)
+{
+	glfwGetWindowSize(s->window, width, height);
+}
+
 int
 surface_bind(surface *s, VkInstance instance, VkSurfaceKHR *surface)
 {
@@ -272,13 +278,19 @@ surface_initui(surface *s, const VkSurfaceKHR *surface)
 }
 
 int
-surface_framebegin(struct surface *s)
+surface_pre_tick(struct surface *s)
 {
 	if (glfwWindowShouldClose(s->window)) {
 		vkQueueWaitIdle(VK_CTX.graphicsqueue);
 		return -1;
 	}
 	glfwPollEvents();
+	return 0;
+}
+
+int
+surface_tick(struct surface *s)
+{
 	// Start the Dear ImGui frame
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -287,7 +299,7 @@ surface_framebegin(struct surface *s)
 }
 
 int
-surface_frameend(struct surface *s) 
+surface_post_tick(struct surface *s) 
 {
         // Rendering
         ImGui::Render();

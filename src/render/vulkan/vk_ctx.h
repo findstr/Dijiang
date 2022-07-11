@@ -18,13 +18,13 @@ namespace vulkan {
 		VkInstance instance = VK_NULL_HANDLE;
 		VkPhysicalDevice phydevice = VK_NULL_HANDLE;
 		VkPhysicalDeviceProperties properties;
-		VkDevice logicdevice = VK_NULL_HANDLE;
+		VkDevice device = VK_NULL_HANDLE;
 		VkQueue graphicsqueue = VK_NULL_HANDLE;
 		VkQueue presentqueue = VK_NULL_HANDLE;
 		VkDescriptorPool descriptorpool = VK_NULL_HANDLE;
 		VmaAllocator allocator = VK_NULL_HANDLE;
 		VkDescriptorSetLayout engine_desc_set_layout = VK_NULL_HANDLE;
-		VkDescriptorSet engine_desc_set = VK_NULL_HANDLE;
+		VkDescriptorSet engine_desc_set[conf::MAX_FRAMES_IN_FLIGHT];
 		VkCommandPool commandpool;
 		swapchainst swapchain;
 		VkSurfaceKHR surface = VK_NULL_HANDLE;
@@ -38,6 +38,7 @@ namespace vulkan {
 	};
 	extern const struct vk_ctx VK_CTX;
 	int vk_ctx_init(const char *name, surface *s, int width, int height);
+	void vk_ctx_recreate_swapchain(int width, int height);
 	void vk_ctx_frame_begin();
 	void vk_ctx_frame_end();
 	void vk_ctx_cleanup();

@@ -8,11 +8,22 @@ namespace input {
 static GLFWwindow *window = nullptr;
 static bool mouse_press = false;
 static touch touch_data; 
+float x_offset = 0.0f;
+float y_offset = 0.0f;
+vector2f mouse_position = vector2f(0, 0);
+
+static void 
+glfw_scroll_func(GLFWwindow* window, double xoffset, double yoffset)
+{
+	x_offset = xoffset;
+	y_offset = yoffset;
+}
 
 void
 init(GLFWwindow *win)
 {
 	window = win;
+	glfwSetScrollCallback(window, glfw_scroll_func);
 }
 
 void 
@@ -94,6 +105,43 @@ touch_get(int index, struct touch *t)
 	*t = touch_data;
 	t->finger_id = 0;
 }
+
+float
+mouse_scroll_delta()
+{
+	float y = y_offset;
+	y_offset = 0.0f;
+	return y;
+}
+
+bool 
+mouse_get_button(int button)
+{
+	switch (button) {
+	case 0:
+		return glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+	case 1:
+		return glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS;
+	case 2:
+		return glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
+	default:
+		return false;
+	}
+}
+
+vector2f
+mouse_get_position()
+{
+	double x, y;
+	int height, width;
+	glfwGetCursorPos(window, &x, &y);
+	glfwGetWindowSize(window, &height, &width);
+	y = height - y;
+	x /= width;
+	y /= height;
+	return vector2f(x, y);
+}
+
 
 }}
 

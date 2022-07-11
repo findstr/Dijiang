@@ -27,7 +27,6 @@ engine::pre_tick(float delta)
 void
 engine::tick(float delta)
 {
-	input::update(delta);
 	level::tick_all(delta);
 }
 

@@ -20,6 +20,8 @@ public:
 	vector3f forward() { return transform->rotation * vector3f(0, 0, 1); }
 	vector3f back() { return transform->rotation * vector3f(0, 0, -1); }
 public:
+	void reg();
+	void unreg();
 	void render();
 public:
 	float fov = 30;
@@ -27,7 +29,8 @@ public:
 	float clip_near_plane = 1.f;
 	float clip_far_plane = 100.f;
 	rect viewport = rect(0.f, 0.f, 1.f, 1.f);
-private:
+protected:
+	bool regged = false;
 	std::vector<draw_object> draw_list;
 /////////static
 public:

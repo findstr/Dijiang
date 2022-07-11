@@ -13,18 +13,17 @@ template<typename T, int BINDING>
 struct vk_uniform {
 private:
 	struct uniform_buffer {
-		bool active = false;
 		vk_buffer buffer;
-		void create(int need_size, int size_one) {
-			destroy();
-			buffer.create(vk_buffer::DYNAMIC, need_size);
+		size_t offset = 0;
+		void *data = nullptr;
+		void refresh(vk_buffer &b, int elem_size, int frame_index) {
 			VkDescriptorBufferInfo bufferInfo{};
-			bufferInfo.buffer = buffer.handle;
+			bufferInfo.buffer = b.handle;
 			bufferInfo.offset = 0;
-			bufferInfo.range = size_one;
-			VkWriteDescriptorSet descriptorWrite{};
+			bufferInfo.range = elem_size;
+			VkWriteDescriptorSet descriptorWrite = {};
 			descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrite.dstSet = VK_CTX.engine_desc_set;
+			descriptorWrite.dstSet = VK_CTX.engine_desc_set[frame_index];
 			descriptorWrite.dstBinding = BINDING;
 			descriptorWrite.dstArrayElement = 0;
 			descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -32,21 +31,42 @@ private:
 			descriptorWrite.pBufferInfo = &bufferInfo;
 			descriptorWrite.pImageInfo = nullptr;
 			descriptorWrite.pTexelBufferView = nullptr;
-			vkUpdateDescriptorSets(VK_CTX.logicdevice, 1,
+
+			vkUpdateDescriptorSets(VK_CTX.device, 1,
 				&descriptorWrite, 0, nullptr);
-			active = true;
 		}
-		void destroy() {
-			if (active == false)
-				return ;
-			active = false;
+		void destroy()
+		{
 			buffer.destroy();
+		}
+		void map() {
+			if (data == nullptr)
+				data = buffer.map();
+		}
+		void unmap(int elem_size) {
+			if (data != nullptr) {
+				buffer.unmap(offset, elem_size);
+				offset += elem_size;
+				data = nullptr;
+			}
+		}
+		void reserve(int count, int elem_size, int frame_index) {
+			int need = offset + count * elem_size;
+			if (need > buffer.size) {
+				buffer.destroy();
+				buffer.create(vk_buffer::DYNAMIC, need);
+				refresh(buffer, elem_size, frame_index);
+			}
+		}
+		void *alloc(int elem_size, int frame_index) {
+			void *ptr;
+			int need = offset + elem_size;
+			assert(need <= buffer.size);
+			ptr = ((unsigned char*)data + offset);
+			return ptr;
 		}
 	};
 	size_t size_aligned = 0;
-	size_t offset = 0;
-	int frame_index = 0;
-	uniform_buffer *main = nullptr;
 	std::array<uniform_buffer, conf::MAX_FRAMES_IN_FLIGHT> buffers;
 public:
 	~vk_uniform() {
@@ -59,34 +79,22 @@ public:
 		if (align > 0)
 			size_aligned = (size_aligned + align - 1) / align * align;
 	}
-	void frame_begin(int frame_index, int need_count) {
-		size_t need_size = need_count *
-			size_aligned *
-			conf::MAX_FRAMES_IN_FLIGHT;
-		if (main == nullptr || main->buffer.size < need_size) {
-			main = &buffers[frame_index];
-			main->create(need_size, size_aligned);
-			offset = 0;
-		} else {
-			auto cur = &buffers[frame_index];
-			if (cur->active && cur != main)
-				cur->destroy();
-		}
+	void frame_begin(int need_count) {
+		buffers[VK_CTX.frame_index].offset = 0;
+		buffers[VK_CTX.frame_index].reserve(need_count, size_aligned, VK_CTX.frame_index);
 	}
 	void frame_end() {
-		if (++frame_index == conf::MAX_FRAMES_IN_FLIGHT) {
-			frame_index = 0;
-			offset = 0;
-		}
 	}
-	std::tuple<T *, int> per_begin() {
-		void *data = main->buffer.map();
-		assert((offset + size_aligned) <= main->buffer.size);
-		return std::make_tuple((T*)((uint8_t *)data + (int)offset), (int)offset);
+	T *alloc() {
+		auto &b = buffers[VK_CTX.frame_index];
+		b.map();
+		return (T *)b.alloc(size_aligned, VK_CTX.frame_index);
 	}
-	void per_end() {
-		main->buffer.unmap(offset, size_aligned);
-		offset += size_aligned;
+	void unmap() {
+		buffers[VK_CTX.frame_index].unmap(size_aligned);
+	}
+	int offset() const {
+		return buffers[VK_CTX.frame_index].offset;
 	}
 };
 

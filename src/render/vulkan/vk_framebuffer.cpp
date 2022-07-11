@@ -12,9 +12,9 @@ vk_framebuffer::init_semaphores()
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	for (size_t i = 0; i < sems.size(); i++) {
-		vkCreateSemaphore(VK_CTX.logicdevice, &semaphoreInfo, nullptr, &sems[i].imgavailable);
-		vkCreateSemaphore(VK_CTX.logicdevice, &semaphoreInfo, nullptr, &sems[i].renderfin);
-		vkCreateFence(VK_CTX.logicdevice, &fenceInfo, nullptr, &sems[i].fence);
+		vkCreateSemaphore(VK_CTX.device, &semaphoreInfo, nullptr, &sems[i].imgavailable);
+		vkCreateSemaphore(VK_CTX.device, &semaphoreInfo, nullptr, &sems[i].renderfin);
+		vkCreateFence(VK_CTX.device, &fenceInfo, nullptr, &sems[i].fence);
 		assert(sems[i].imgavailable && sems[i].renderfin && sems[i].fence);
 	}
 }
@@ -24,9 +24,9 @@ vk_framebuffer::destroy_semaphores()
 {
 	for (size_t i = 0; i < sems.size(); i++) {
 		auto &sem = sems[i];
-		vkDestroySemaphore(VK_CTX.logicdevice, sem.imgavailable, nullptr);
-		vkDestroySemaphore(VK_CTX.logicdevice, sem.renderfin, nullptr);
-		vkDestroyFence(VK_CTX.logicdevice, sem.fence, nullptr);
+		vkDestroySemaphore(VK_CTX.device, sem.imgavailable, nullptr);
+		vkDestroySemaphore(VK_CTX.device, sem.renderfin, nullptr);
+		vkDestroyFence(VK_CTX.device, sem.fence, nullptr);
 		sem.imgavailable = VK_NULL_HANDLE;
 		sem.renderfin = VK_NULL_HANDLE;
 		sem.fence = VK_NULL_HANDLE;
@@ -75,14 +75,14 @@ vk_framebuffer::init_depth_textures()
 	createInfo.subresourceRange.levelCount = 1;
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
-	ret = vkCreateImageView(VK_CTX.logicdevice, &createInfo, nullptr, &depth.view);
+	ret = vkCreateImageView(VK_CTX.device, &createInfo, nullptr, &depth.view);
 	assert(ret == VK_SUCCESS);
 }
 
 void
 vk_framebuffer::destroy_depth_textures()
 {
-	vkDestroyImageView(VK_CTX.logicdevice, depth_texture.view, nullptr);
+	vkDestroyImageView(VK_CTX.device, depth_texture.view, nullptr);
 	vmaDestroyImage(VK_CTX.allocator, depth_texture.image, depth_texture.allocation);
 }
 
@@ -104,7 +104,7 @@ vk_framebuffer::init_frame_buffers()
 		framebuffInfo.width = VK_CTX.swapchain.extent.width;
 		framebuffInfo.height = VK_CTX.swapchain.extent.height;
 		framebuffInfo.layers = 1;
-		auto ret = vkCreateFramebuffer(VK_CTX.logicdevice, &framebuffInfo, nullptr, &frame_buffers[i]);
+		auto ret = vkCreateFramebuffer(VK_CTX.device, &framebuffInfo, nullptr, &frame_buffers[i]);
 		assert(ret == VK_SUCCESS);
 	}
 }
@@ -113,9 +113,18 @@ void
 vk_framebuffer::destroy_frame_buffers()
 {
 	for (size_t i = 0; i < frame_buffers.size(); i++) {
-		vkDestroyFramebuffer(VK_CTX.logicdevice, frame_buffers[i], nullptr);
+		vkDestroyFramebuffer(VK_CTX.device, frame_buffers[i], nullptr);
 		frame_buffers[i] = VK_NULL_HANDLE;
 	}
+}
+	
+void 
+vk_framebuffer::resize()
+{
+	destroy_frame_buffers();
+	destroy_depth_textures();
+	init_depth_textures();
+	init_frame_buffers();
 }
 
 
@@ -138,8 +147,8 @@ vk_framebuffer::acquire()
 {
 	vk_ctx_frame_begin();
 	auto &sem = sems[VK_CTX.frame_index];
-	vkWaitForFences(VK_CTX.logicdevice, 1, &sem.fence, VK_TRUE, UINT64_MAX);
-	auto result = vkAcquireNextImageKHR(VK_CTX.logicdevice,
+	vkWaitForFences(VK_CTX.device, 1, &sem.fence, VK_TRUE, UINT64_MAX);
+	auto result = vkAcquireNextImageKHR(VK_CTX.device,
 		VK_CTX.swapchain.handle,
 		UINT64_MAX,
 		sem.imgavailable,
@@ -169,7 +178,7 @@ vk_framebuffer::submit(VkCommandBuffer cmdbuf)
 	VkSemaphore signalSemaphores[] = { sem.renderfin };
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
-	vkResetFences(VK_CTX.logicdevice, 1, &sem.fence);
+	vkResetFences(VK_CTX.device, 1, &sem.fence);
 	auto result = vkQueueSubmit(VK_CTX.graphicsqueue, 1, &submitInfo, sem.fence);
 	if (result != VK_SUCCESS) {
 		throw std::runtime_error("failed to submit draw command buffer");

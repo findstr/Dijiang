@@ -666,6 +666,7 @@ load_level(const std::string &file, std::function<void(gameobject *, int)> add_g
 					parse_meshrender(mr, it->second);
 				} else if (type == "camera") {
 					auto cam = new camera(go);
+					cam->reg();
 					go->add_component(cam);
 					parse_camera(cam, it->second);
 				} else if (type == "animator") {

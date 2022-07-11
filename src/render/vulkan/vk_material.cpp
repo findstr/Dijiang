@@ -31,7 +31,7 @@ vk_material::set_shader(std::shared_ptr<render::shader> &s)
 		dsa.descriptorPool = VK_CTX.descriptorpool;
 		dsa.descriptorSetCount = 1;
 		dsa.pSetLayouts = &desc_layout;
-		auto result = vkAllocateDescriptorSets(VK_CTX.logicdevice,
+		auto result = vkAllocateDescriptorSets(VK_CTX.device,
 			&dsa, &desc_set[i]);
 		if (result != VK_SUCCESS)
 			printf("====:%d\n", result);
@@ -78,7 +78,7 @@ vk_material::set_texture(const std::string &name,
 			dw.pImageInfo = &imageInfo;
 		}
 	}
-	vkUpdateDescriptorSets(VK_CTX.logicdevice,
+	vkUpdateDescriptorSets(VK_CTX.device,
 		static_cast<uint32_t>(descriptorWrite.size()),
 		descriptorWrite.data(), 0, nullptr);
 }

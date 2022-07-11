@@ -46,13 +46,17 @@ vk_shader::analyze_uniform_buffers(
 
 		int set = compiler.get_decoration(ub.id, spv::DecorationDescriptorSet);
 		int binding = compiler.get_decoration(ub.id, spv::DecorationBinding);
-		if (var_name == ENGINE_PER_DRAW_NAME) {
-			assert(set == ENGINE_PER_DRAW_SET);
-			assert(binding == ENGINE_PER_DRAW_BINDING);
-			continue;
-		} else if (var_name == ENGINE_PER_FRAME_NAME) {
-			assert(set == ENGINE_PER_FRAME_SET);
+		if (var_name == ENGINE_PER_FRAME_NAME) {
+			assert(set == ENGINE_DESC_SET);
 			assert(binding == ENGINE_PER_FRAME_BINDING);
+			continue;
+		} else if (var_name == ENGINE_PER_CAMERA_NAME) {
+			assert(set == ENGINE_DESC_SET);
+			assert(binding == ENGINE_PER_CAMERA_BINDING);
+			continue;
+		} else if (var_name == ENGINE_PER_OBJECT_NAME) {
+			assert(set == ENGINE_DESC_SET);
+			assert(binding = ENGINE_PER_OBJECT_BINDING);
 			continue;
 		}
 		auto &bi = buffers.emplace_back();
@@ -215,7 +219,7 @@ vk_shader::build_desc_set_layout()
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	layoutInfo.pBindings = bindings.data();
 
-	result = vkCreateDescriptorSetLayout(VK_CTX.logicdevice, &layoutInfo, nullptr, &desc_set_layout_);
+	result = vkCreateDescriptorSetLayout(VK_CTX.device, &layoutInfo, nullptr, &desc_set_layout_);
 	assert(result == VK_SUCCESS);
 }
 
@@ -240,7 +244,7 @@ vk_shader::vk_shader(const std::vector<render::shader::code> &stages)
 		analyze_samplers(compiler, res, stage);
 		createInfo.codeSize = code_size;
 		createInfo.pCode = code;
-		if (vkCreateShaderModule(VK_CTX.logicdevice, &createInfo,
+		if (vkCreateShaderModule(VK_CTX.device, &createInfo,
 			nullptr, &shader_module) != VK_SUCCESS) {
 			assert(!"create shader fail");
 		}
@@ -251,7 +255,7 @@ vk_shader::vk_shader(const std::vector<render::shader::code> &stages)
 
 vk_shader::~vk_shader()
 {
-	auto device = VK_CTX.logicdevice;
+	auto device = VK_CTX.device;
 	for (auto &si : modules)
 		vkDestroyShaderModule(device, si.module, nullptr);
 	if (desc_set_layout_ != VK_NULL_HANDLE)

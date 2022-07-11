@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <filesystem>
 #include "level.h"
 #include "components/meshfilter.h"
 #include "components/meshrender.h"
@@ -8,9 +9,9 @@
 
 namespace engine {
 
-level::level(const std::string &path)
+level::level(const std::string &name)
 {
-	name = path;
+	name_ = name;
 }
 level::~level()
 {
@@ -66,7 +67,8 @@ std::vector<std::unique_ptr<level>> level::levels;
 void
 level::load(const std::string &path)
 {
-	level *lv = new level(path);
+	std::string name = std::filesystem::path(path).filename().string();
+	level *lv = new level(name);
 	levels.emplace_back(lv);
 	resource::load_level(path, [&lv](gameobject *go, int parent) {
 		lv->add_gameobject(go, parent);
@@ -101,6 +103,9 @@ level::cull(camera *cam, std::vector<draw_object> &list)
 				material = mr->get_material();
 				list.emplace_back(go->transform, mesh, material);
 			}
+		#if IS_EDITOR
+			list.back().go = go;
+		#endif
 		}
 	}
 }

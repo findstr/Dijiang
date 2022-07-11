@@ -12,13 +12,12 @@ namespace engine {
 class animator : public component {
 private:
 	std::shared_ptr<animation::skeleton> skeleton;
-	std::vector<animation::skeleton::pose> debug_pose;
-	std::vector<matrix4f> current_pose;
+	std::vector<animation::skeleton::pose> current_pose;
 public:
 	animator(gameobject *go) : component(go) {}
 	void set_skeleton(const std::shared_ptr<animation::skeleton> &ske);
 	const animation::skeleton *get_skeleton();
-	std::vector<matrix4f> &get_current_pose() { return current_pose; }
+	std::vector<animation::skeleton::pose> &get_current_pose() { return current_pose; }
 
 public:
 	const std::string type() override { return "animator"; }

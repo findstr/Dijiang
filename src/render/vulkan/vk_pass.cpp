@@ -60,13 +60,13 @@ vk_pass::vk_pass()
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	auto result = vkCreateRenderPass(VK_CTX.logicdevice, &renderPassInfo, nullptr, &renderpass);
+	auto result = vkCreateRenderPass(VK_CTX.device, &renderPassInfo, nullptr, &renderpass);
 	assert(result == VK_SUCCESS);
 }
 
 vk_pass::~vk_pass()
 {
-	vkDestroyRenderPass(VK_CTX.logicdevice, renderpass, nullptr);
+	vkDestroyRenderPass(VK_CTX.device, renderpass, nullptr);
 }
 
 VkFormat

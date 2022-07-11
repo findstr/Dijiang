@@ -27,6 +27,8 @@ public:
 	void copy_from(vk_buffer *src);
 	void copy_from(VkCommandBuffer cmdbuf, vk_buffer *src);
 public:
+	vk_buffer &operator = (vk_buffer &&b);
+public:
 	size_t size = 0;
 	type type = type::NONE;
 	VkBuffer handle = VK_NULL_HANDLE;

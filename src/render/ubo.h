@@ -20,11 +20,14 @@ struct per_frame {
 	glm::vec3 engine_light_radiance;
 };
 
-struct per_draw{
-	glm::mat4 model;
+struct per_camera{
 	glm::mat4 view;
 	glm::mat4 proj;
 	glm::vec3 engine_camera_pos;
+};
+
+struct per_object {
+	glm::mat4 model;
 	std::array<glm::mat4, ENGINE_MAX_BONE_PER_SKELETON> skeleton_pose;
 };
 

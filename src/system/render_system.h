@@ -16,8 +16,9 @@ class render_system {
 public:
 	render_system();
 	~render_system();
-	bool frame_begin(float delta);
-	void draw(camera *cam, draw_object &draw);
+	int frame_begin(float delta);
+	void set_camera(camera *cam);
+	void draw(draw_object &draw);
 	void frame_end(float delta);
 	void get_resolution(int *x, int *y);
 public:
@@ -31,10 +32,11 @@ private:
 #if USE_VULKAN
 	bool acquire_success = true;
 	vulkan::surface *surface = nullptr;
+	std::array<uint32_t, 3> ubo_offset;
+	VkViewport viewport;
 	std::unique_ptr<vulkan::vk_uniform<render::ubo::per_frame, vulkan::ENGINE_PER_FRAME_BINDING>> uniform_per_frame;
-	std::unique_ptr<vulkan::vk_uniform<render::ubo::per_draw, vulkan::ENGINE_PER_DRAW_BINDING>> uniform_per_draw;
-	render::ubo::per_frame *per_frame_buffer = nullptr;
-	int per_frame_offset = 0;
+	std::unique_ptr<vulkan::vk_uniform<render::ubo::per_camera, vulkan::ENGINE_PER_CAMERA_BINDING>> uniform_per_camera;
+	std::unique_ptr<vulkan::vk_uniform<render::ubo::per_object, vulkan::ENGINE_PER_OBJECT_BINDING>> uniform_per_object;
 #endif
 };
 

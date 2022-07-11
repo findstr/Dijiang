@@ -17,6 +17,7 @@ public:
 	vk_framebuffer();
 	~vk_framebuffer();
 public:
+	void resize();
 	acquire_result acquire();
 	int submit(VkCommandBuffer cmdbuf);
 	VkFramebuffer current() const;

@@ -12,7 +12,7 @@ cmdbuf_single_begin()
 	allocInfo.commandBufferCount = 1;
 
 	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(VK_CTX.logicdevice, &allocInfo, &commandBuffer);
+	vkAllocateCommandBuffers(VK_CTX.device, &allocInfo, &commandBuffer);
 
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -33,7 +33,7 @@ cmdbuf_single_end(VkCommandBuffer commandBuffer)
 	vkQueueSubmit(VK_CTX.graphicsqueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(VK_CTX.graphicsqueue);
 
-	vkFreeCommandBuffers(VK_CTX.logicdevice, VK_CTX.commandpool, 1, &commandBuffer);
+	vkFreeCommandBuffers(VK_CTX.device, VK_CTX.commandpool, 1, &commandBuffer);
 }
 
 

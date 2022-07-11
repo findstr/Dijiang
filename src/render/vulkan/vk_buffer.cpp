@@ -121,5 +121,19 @@ vk_buffer::vk_buffer(enum vk_buffer::type t, size_t sz)
 	create(t, sz);
 }
 
+vk_buffer &vk_buffer::operator = (vk_buffer &&src)
+{
+	size = src.size;
+	type = src.type;
+	handle = src.handle;
+	allocation = src.allocation;
+
+	src.size = 0;
+	src.type = type::NONE;
+	src.handle = VK_NULL_HANDLE;
+	src.allocation = VK_NULL_HANDLE;
+	return *this;
+}
+
 }}
 
