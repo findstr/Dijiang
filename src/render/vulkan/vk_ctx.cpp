@@ -1,14 +1,19 @@
 #include <memory>
 #include <vector>
 #include <set>
+#include <array>
 #include <optional>
 #include <iostream>
 #include <unordered_map>
 #include <vulkan/vulkan.hpp>
+#include "render/lighting_asset.h"
+#include "../../asset/shaders/include/engine_constant.inc.hlsl"
+#include "vk_framebuffer.h"
 #include "vk_mem_alloc.h"
 #include "vk_shader_variables.h"
 
 #include "conf.h"
+#include "vk_native.h"
 #include "vk_surface.h"
 #include "vk_texture.h"
 #include "vk_ctx.h"
@@ -491,7 +496,7 @@ createCommandPool(VkPhysicalDevice phydevice, VkDevice logicdevice, VkSurfaceKHR
 static void
 create_engine_descriptor_set() 
 {
-	std::array<VkDescriptorSetLayoutBinding, 3> bindings;
+	std::array<VkDescriptorSetLayoutBinding, 11> bindings;
 	auto &b0 = bindings[0];
 	b0.binding = ENGINE_PER_FRAME_BINDING;
 	b0.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -513,13 +518,71 @@ create_engine_descriptor_set()
 	b2.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	b2.pImmutableSamplers = nullptr;
 
+	auto &b3 = bindings[3];
+	b3.binding = ENGINE_BRDF_TEX_BINDING;
+	b3.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	b3.descriptorCount = 1;
+	b3.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	b3.pImmutableSamplers = nullptr;
+
+	auto &b4 = bindings[4];
+	b4.binding = ENGINE_BRDF_TEX_SAMPLER_BINDING;
+	b4.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	b4.descriptorCount = 1;
+	b4.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	b4.pImmutableSamplers = nullptr;
+
+	auto &b5 = bindings[5];
+	b5.binding = ENGINE_SKYBOX_SPECULAR_BINDING;
+	b5.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	b5.descriptorCount = 1;
+	b5.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	b5.pImmutableSamplers = nullptr;
+
+	auto &b6 = bindings[6];
+	b6.binding = ENGINE_SKYBOX_SPECULAR_SAMPLER_BINDING;
+	b6.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	b6.descriptorCount = 1;
+	b6.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	b6.pImmutableSamplers = nullptr;
+
+	auto &b7 = bindings[7];
+	b7.binding = ENGINE_SKYBOX_IRRADIANCE_BINDING;
+	b7.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	b7.descriptorCount = 1;
+	b7.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	b7.pImmutableSamplers = nullptr;
+
+	auto &b8 = bindings[8];
+	b8.binding = ENGINE_SKYBOX_IRRADIANCE_SAMPLER_BINDING;
+	b8.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	b8.descriptorCount = 1;
+	b8.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	b8.pImmutableSamplers = nullptr;
+
+	auto &b9 = bindings[9];
+	b9.binding = ENGINE_SHADOWMAP_BINDING;
+	b9.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	b9.descriptorCount = ENGINE_MAX_DIRECTIONAL_LIGHT;
+	b9.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	b9.pImmutableSamplers = nullptr;
+
+	auto &b10 = bindings[10];
+	b10.binding = ENGINE_SHADOWMAP_SAMPLER_BINDING;
+	b10.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+	b10.descriptorCount = 1;
+	b10.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	b10.pImmutableSamplers = nullptr;
+
 	VkDescriptorSetLayoutCreateInfo ci{};
 	ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	ci.bindingCount = bindings.size();
 	ci.pBindings = bindings.data();
 	auto result = vkCreateDescriptorSetLayout(CTX.device, &ci, nullptr, &CTX.engine_desc_set_layout);
 	assert(result == VK_SUCCESS);
-	VkDescriptorSetLayout layouts[] = {CTX.engine_desc_set_layout, CTX.engine_desc_set_layout};
+	VkDescriptorSetLayout layouts[conf::MAX_FRAMES_IN_FLIGHT];
+	for (int i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) 
+		layouts[i] = CTX.engine_desc_set_layout;
 	VkDescriptorSetAllocateInfo dsa{};
 	dsa.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	dsa.descriptorPool = CTX.descriptorpool;
@@ -528,6 +591,80 @@ create_engine_descriptor_set()
 	result = vkAllocateDescriptorSets(
 		CTX.device, &dsa, CTX.engine_desc_set);
 	assert(result == VK_SUCCESS);
+}
+	
+void
+vk_ctx_init_lighting()
+{
+	static struct {
+		render::texture *tex;
+		int binding;
+		int sampler_binding;
+	} textures[] = {
+		{LIGHTING_ASSET.brdf_texture.get(), ENGINE_BRDF_TEX_BINDING, ENGINE_BRDF_TEX_SAMPLER_BINDING},
+		{LIGHTING_ASSET.skybox_specular.get(), ENGINE_SKYBOX_SPECULAR_BINDING, ENGINE_SKYBOX_SPECULAR_SAMPLER_BINDING},
+		{LIGHTING_ASSET.skybox_irradiance.get(), ENGINE_SKYBOX_IRRADIANCE_BINDING, ENGINE_SKYBOX_IRRADIANCE_SAMPLER_BINDING},
+	};
+	int count = sizeof(textures) / sizeof(textures[0]);
+	std::array<VkDescriptorImageInfo, sizeof(textures) / sizeof(textures[0]) + 1> imageInfo;
+	for (int i = 0; i < count; i++) {
+		imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo[i].imageView = native_of(textures[i].tex).view;
+		imageInfo[i].sampler = native_of(textures[i].tex).sampler(textures[i].tex);
+	}
+	imageInfo[count].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo[count].imageView = VK_FRAMEBUFFER.shadowmap();
+	imageInfo[count].sampler = imageInfo[0].sampler;
+	
+	std::array<VkWriteDescriptorSet, (sizeof(textures) / sizeof(textures[0]) + 1) * 2 * conf::MAX_FRAMES_IN_FLIGHT> descriptorWrite;
+	int k = 0;
+	for (int i = 0; i < count; i++) {
+		for (int j = 0; j < conf::MAX_FRAMES_IN_FLIGHT; j++) {
+			descriptorWrite[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite[k].dstSet = VK_CTX.engine_desc_set[j];
+			descriptorWrite[k].dstBinding = textures[i].binding;
+			descriptorWrite[k].dstArrayElement = 0;
+			descriptorWrite[k].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			descriptorWrite[k].descriptorCount = 1;
+			descriptorWrite[k].pImageInfo = &imageInfo[i];
+			descriptorWrite[k].pNext = VK_NULL_HANDLE;
+			++k;
+
+			descriptorWrite[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorWrite[k].dstSet = VK_CTX.engine_desc_set[j];
+			descriptorWrite[k].dstBinding = textures[i].sampler_binding;
+			descriptorWrite[k].dstArrayElement = 0;
+			descriptorWrite[k].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+			descriptorWrite[k].descriptorCount = 1;
+			descriptorWrite[k].pImageInfo = &imageInfo[i];
+			descriptorWrite[k].pNext = VK_NULL_HANDLE;
+			++k;
+		}
+	}
+	for (int j = 0; j < conf::MAX_FRAMES_IN_FLIGHT; j++) {
+		descriptorWrite[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[k].dstSet = VK_CTX.engine_desc_set[j];
+		descriptorWrite[k].dstBinding = ENGINE_SHADOWMAP_BINDING;
+		descriptorWrite[k].dstArrayElement = 0;
+		descriptorWrite[k].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		descriptorWrite[k].descriptorCount = 1;
+		descriptorWrite[k].pImageInfo = &imageInfo[count];
+		descriptorWrite[k].pNext = VK_NULL_HANDLE;
+		++k;
+
+		descriptorWrite[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite[k].dstSet = VK_CTX.engine_desc_set[j];
+		descriptorWrite[k].dstBinding = ENGINE_SHADOWMAP_SAMPLER_BINDING;
+		descriptorWrite[k].dstArrayElement = 0;
+		descriptorWrite[k].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+		descriptorWrite[k].descriptorCount = 1;
+		descriptorWrite[k].pImageInfo = &imageInfo[count];
+		descriptorWrite[k].pNext = VK_NULL_HANDLE;
+		++k;
+	}
+	vkUpdateDescriptorSets(VK_CTX.device,
+		static_cast<uint32_t>(descriptorWrite.size()),
+		descriptorWrite.data(), 0, nullptr);
 }
 
 static VkFormat
@@ -554,6 +691,69 @@ find_depth_format()
 		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+static VkRenderPass
+new_shadowmap_pass()
+{
+	VkAttachmentDescription colorAttachment = {};
+	colorAttachment.format = VK_FORMAT_R32_SFLOAT;
+	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkAttachmentReference colorAttachmentRef = {};
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+
+	VkAttachmentDescription depthAttachment{};
+	depthAttachment.format = VK_CTX.depth_format;
+	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthAttachmentRef{};
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorAttachmentRef;
+	subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+	VkSubpassDependency dependency{};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;;
+	dependency.srcAccessMask = 0;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;;
+
+	std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment }; //Should keep order of renderframe
+
+	VkRenderPassCreateInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPassInfo.pAttachments = attachments.data();
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;
+	renderPassInfo.dependencyCount = 1;
+	renderPassInfo.pDependencies = &dependency;
+	
+	VkRenderPass renderpass;
+	auto ret = vkCreateRenderPass(VK_CTX.device, &renderPassInfo, nullptr, &renderpass);
+	assert(ret == VK_SUCCESS);
+	return renderpass;
 }
 
 static VkRenderPass
@@ -649,6 +849,7 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	create_engine_descriptor_set();
 	CTX.depth_format = find_depth_format();
 	CTX.render_pass = new_renderpass();
+	CTX.shadowmap_pass = new_shadowmap_pass();
 	std::cout << "The GPU has a minimum buffer alignment of " <<
 		CTX.properties.limits.minUniformBufferOffsetAlignment << std::endl;
 	return 0;
@@ -681,8 +882,6 @@ vk_ctx_frame_end()
 {
 	CTX.frame_index = (CTX.frame_index + 1) % conf::MAX_FRAMES_IN_FLIGHT;
 }
-
-
 
 void
 vk_ctx_cleanup()

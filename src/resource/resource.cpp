@@ -20,11 +20,13 @@
 #include "components/animator.h"
 #include "components/skinrender.h"
 #include "components/luacomponent.h"
+#include "components/light.h"
 #include "render/texture2d.h"
 #include "render/cubemap.h"
 #include "render/texture_filter.h"
 #include "render/texture_format.h"
 #include "render/texture_wrap.h"
+#include "render/lighting_asset.h"
 #include "resource.h"
 
 
@@ -38,7 +40,27 @@ static std::unordered_map<std::string, std::shared_ptr<render::mesh>> mesh_pool;
 void
 init()
 {
-
+	YAML::Node root = YAML::LoadFile("asset/lighting.asset");
+	auto brdf = root["brdf_texture"];
+	auto skybox = root["skybox"];
+	auto skybox_specular = skybox["specular"];
+	auto skybox_irradiance = skybox["irradiance"];
+	LIGHTING_ASSET.brdf_texture = load_texture2d(brdf["file"].as<std::string>());
+	std::array<std::string, render::cubemap::FACE_COUNT> pathes;
+	pathes[0] = skybox_specular["x+"].as<std::string>();
+	pathes[1] = skybox_specular["x-"].as<std::string>();
+	pathes[2] = skybox_specular["y+"].as<std::string>();
+	pathes[3] = skybox_specular["y-"].as<std::string>();
+	pathes[4] = skybox_specular["z+"].as<std::string>();
+	pathes[5] = skybox_specular["z-"].as<std::string>();
+	LIGHTING_ASSET.skybox_specular = load_cubemap(pathes);
+	pathes[0] = skybox_irradiance["x+"].as<std::string>();
+	pathes[1] = skybox_irradiance["x-"].as<std::string>();
+	pathes[2] = skybox_irradiance["y+"].as<std::string>();
+	pathes[3] = skybox_irradiance["y-"].as<std::string>();
+	pathes[4] = skybox_irradiance["z+"].as<std::string>();
+	pathes[5] = skybox_irradiance["z-"].as<std::string>();
+	LIGHTING_ASSET.skybox_irradiance = load_cubemap(pathes);
 }
 
 void
@@ -320,7 +342,7 @@ load_shader(const std::string &file)
 }
 
 std::shared_ptr<render::material>
-load_material(const std::string &file)
+load_material(const std::string &file, bool shadowcaster)
 {
 	auto &mat = mat_pool[file];
 	if (mat != nullptr)
@@ -332,7 +354,7 @@ load_material(const std::string &file)
 	auto shader_file = root["shader_file"].as<std::string>();
 	std::cout << root["render_queue"].as<std::string>() << shader_file << std::endl;
 	auto shader = load_shader(shader_file);
-	auto *m = render::material::create(shader, ztest);
+	auto *m = render::material::create(shader, ztest, shadowcaster);
 	mat.reset(m);
 	auto params = root["shader_params"];
 	for (int i = 0; i < params.size(); i++) {
@@ -423,6 +445,20 @@ parse_vector3f(YAML::Node &n)
 	float y = n['y'].as<float>();
 	float z = n['z'].as<float>();
 	return vector3f(x, y, z);
+}
+
+static inline color
+parse_color(YAML::Node &n)
+{
+	float r = n["r"].as<float>();
+	float g = n["g"].as<float>();
+	float b = n["b"].as<float>();
+	float a;
+	if (n["a"])
+		a = n["a"].as<float>();
+	else
+		a = 1.0f;
+	return color(r, g, b, a);
 }
 
 static inline quaternion
@@ -565,8 +601,13 @@ static void
 parse_meshrender(meshrender *mr, YAML::Node n)
 {
 	auto path = n["material"].as<std::string>();
-	auto material = load_material(path);
+	auto material = load_material(path, false);
 	mr->set_material(material);
+	if (n["shadowcaster"]) {
+		auto path = n["shadowcaster"].as<std::string>();
+		auto m = load_material(path, true);
+		mr->set_shadowcaster(m);
+	}
 	std::cout << "meshrender" << path << std::endl;
 }
 
@@ -577,6 +618,21 @@ parse_camera(camera *cam, YAML::Node n)
 	cam->aspect = n["aspect"].as<float>();
 	cam->clip_near_plane = n["clip_near_plane"].as<float>();
 	cam->clip_far_plane = n["clip_far_plane"].as<float>();
+	if (n["perspective"]) {
+		cam->perspective = n["perspective"].as<std::string>() == "true";
+	}
+	if (!cam->perspective) {
+		cam->orthographic_size =  n["orthographic_size"].as<float>();
+	}
+}
+
+static void
+parse_light(light *light, YAML::Node n)
+{
+	auto color = n["color"];
+	light->type = light::type::DIRECTIONAL;
+	light->color= parse_color(color);
+	light->intensity = n["intensity"].as<float>();
 }
 
 static void
@@ -590,7 +646,7 @@ static void
 parse_skinrender(skinrender *sr, YAML::Node n) 
 {
 	auto mesh = load_mesh(n["mesh"].as<std::string>());
-	auto mat = load_material(n["material"].as<std::string>());
+	auto mat = load_material(n["material"].as<std::string>(), false);
 	std::ifstream input_file(n["skin"].as<std::string>());
 	auto *m = mesh.get();
 	m->bone_weights.clear();
@@ -620,6 +676,11 @@ parse_skinrender(skinrender *sr, YAML::Node n)
 	assert(m->bone_weights.size() == m->vertices.size());
 	sr->set_mesh(mesh);
 	sr->set_material(mat);
+	if (n["shadowcaster"]) {
+		auto path = n["shadowcaster"].as<std::string>();
+		auto m = load_material(path, true);
+		sr->set_shadowcaster(m);
+	}
 }
 
 static void
@@ -669,6 +730,11 @@ load_level(const std::string &file, std::function<void(gameobject *, int)> add_g
 					cam->reg();
 					go->add_component(cam);
 					parse_camera(cam, it->second);
+				} else if (type == "light") {
+					auto li = new light(go);
+					li->reg();
+					go->add_component(li);
+					parse_light(li, it->second);
 				} else if (type == "animator") {
 					auto *ani = new animator(go);
 					go->add_component(ani);

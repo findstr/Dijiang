@@ -1,0 +1,3 @@
+render_queue : geometry
+shader_file: asset/shaders/skeletonshadowcaster
+shader_params:

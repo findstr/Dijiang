@@ -31,6 +31,45 @@ to_platform(render::shader::stage stage)
 	return VK_SHADER_STAGE_VERTEX_BIT;
 }
 
+#ifndef NDEBUG
+
+static void
+check_valid(const std::string &var_name, int binding) 
+{
+	#define ENTRY(name) {name##_BINDING, name##_NAME}
+	static struct {
+		int bnding;
+		std::string name;
+	} name_checks[] = {
+		ENTRY(ENGINE_PER_FRAME),
+		ENTRY(ENGINE_PER_CAMERA),
+		ENTRY(ENGINE_PER_OBJECT),
+
+		ENTRY(ENGINE_BRDF_TEX),
+		ENTRY(ENGINE_SKYBOX_SPECULAR),
+		ENTRY(ENGINE_SKYBOX_IRRADIANCE),
+		ENTRY(ENGINE_SHADOWMAP),
+
+		ENTRY(ENGINE_BRDF_TEX_SAMPLER),
+		ENTRY(ENGINE_SKYBOX_SPECULAR_SAMPLER),
+		ENTRY(ENGINE_SKYBOX_IRRADIANCE_SAMPLER),
+		ENTRY(ENGINE_SHADOWMAP_SAMPLER),
+	};
+	#undef ENTRY
+	for (int i = 0; i < sizeof(name_checks) / sizeof(name_checks[0]); i++) {
+		if (name_checks[i].name == var_name) {
+			assert(binding == name_checks[i].bnding);
+			break;
+		}
+	}
+}
+
+#else
+
+#define check_valid(a,b)	(void)a; (void)b;
+
+#endif
+
 void
 vk_shader::analyze_uniform_buffers(
 	spirv_cross::Compiler &compiler,
@@ -46,17 +85,8 @@ vk_shader::analyze_uniform_buffers(
 
 		int set = compiler.get_decoration(ub.id, spv::DecorationDescriptorSet);
 		int binding = compiler.get_decoration(ub.id, spv::DecorationBinding);
-		if (var_name == ENGINE_PER_FRAME_NAME) {
-			assert(set == ENGINE_DESC_SET);
-			assert(binding == ENGINE_PER_FRAME_BINDING);
-			continue;
-		} else if (var_name == ENGINE_PER_CAMERA_NAME) {
-			assert(set == ENGINE_DESC_SET);
-			assert(binding == ENGINE_PER_CAMERA_BINDING);
-			continue;
-		} else if (var_name == ENGINE_PER_OBJECT_NAME) {
-			assert(set == ENGINE_DESC_SET);
-			assert(binding = ENGINE_PER_OBJECT_BINDING);
+		if (set == ENGINE_DESC_SET) {
+			check_valid(var_name, binding);
 			continue;
 		}
 		auto &bi = buffers.emplace_back();
@@ -83,6 +113,11 @@ vk_shader::analyze_storage_buffers(
 
 		int set = compiler.get_decoration(sb.id, spv::DecorationDescriptorSet);
 		int binding = compiler.get_decoration(sb.id, spv::DecorationBinding);
+
+		if (set == ENGINE_DESC_SET) {
+			check_valid(var_name, binding);
+			continue;
+		}
 
 		auto &bi = buffers.emplace_back();
 		bi.set = set;
@@ -148,6 +183,11 @@ vk_shader::analyze_images(
 		int set = compiler.get_decoration(si.id, spv::DecorationDescriptorSet);
 		int binding = compiler.get_decoration(si.id, spv::DecorationBinding);
 
+		if (set == ENGINE_DESC_SET) {
+			check_valid(var_name, binding);
+			continue;
+		}
+
 		auto &img = images.emplace_back();
 		img.set = set;
 		img.binding = binding;
@@ -171,6 +211,11 @@ vk_shader::analyze_samplers(
 
 		int set = compiler.get_decoration(ss.id, spv::DecorationDescriptorSet);
 		int binding = compiler.get_decoration(ss.id, spv::DecorationBinding);
+
+		if (set == ENGINE_DESC_SET) {
+			check_valid(var_name, binding);
+			continue;
+		}
 
 		auto &sam = samplers.emplace_back();
 		sam.set = set;
@@ -290,9 +335,7 @@ vk_shader::find_sampler(const std::string &name)
 	return find<sampler>(name, samplers);
 }
 
-
 }
-
 
 namespace render {
 

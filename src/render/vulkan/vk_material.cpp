@@ -13,9 +13,10 @@ namespace engine {
 
 namespace vulkan {
 
-vk_material::vk_material(std::shared_ptr<render::shader> &s, bool ztest)
+vk_material::vk_material(std::shared_ptr<render::shader> &s, bool ztest, bool shadowcaster)
 {
 	this->ztest = ztest;
+	this->shadowcaster = shadowcaster;
 	set_shader(s);
 }
 
@@ -37,9 +38,10 @@ vk_material::set_shader(std::shared_ptr<render::shader> &s)
 			printf("====:%d\n", result);
 		assert(result == VK_SUCCESS);
 	}
-	auto pass = std::shared_ptr<vk_pass>(new vk_pass());
-	renderpass = pass;
-	pipeline = std::unique_ptr<vk_pipeline>(vk_pipeline::create(pass.get(), (vk_shader *)shader.get(), ztest));
+	if (shadowcaster) 
+		pipeline = std::unique_ptr<vk_pipeline>(vk_pipeline::create(VK_CTX.shadowmap_pass, (vk_shader *)shader.get(), ztest));
+	else
+		pipeline = std::unique_ptr<vk_pipeline>(vk_pipeline::create(VK_CTX.render_pass, (vk_shader *)shader.get(), ztest));
 }
 
 void
@@ -82,14 +84,6 @@ vk_material::set_texture(const std::string &name,
 		static_cast<uint32_t>(descriptorWrite.size()),
 		descriptorWrite.data(), 0, nullptr);
 }
-
-void
-vk_material::set_renderpass(std::shared_ptr<vk_pass> &rp)
-{
-	renderpass = rp;
-	pipeline = std::unique_ptr<vk_pipeline>(vk_pipeline::create(rp.get(), (vk_shader *)shader.get()));
-}
-
 
 }}
 

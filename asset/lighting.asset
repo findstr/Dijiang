@@ -1,24 +1,9 @@
-render_queue : geometry
-shader_file: asset/shaders/skeleton
-shader_params:
-    -
-        name: tex_albedo
+---
+brdf_texture:
         type: texture2d
-        file: asset/textures/robot/xiaobairen1k_BaseColor.tga
-    -
-        name: tex_roughness
-        type: texture2d
-        file: asset/textures/robot/xiaobairen1k_OcclusionRoughnessMetallic.tga
-    -
-        name: tex_normal
-        type: texture2d
-        file: asset/textures/robot/xiaobairen1k_Normal.tga
-    -
-        name: tex_brdf_schilk
-        type: texture2d
-        file: asset/lut/brdf_schilk.hdr
-    -	
-        name: tex_skybox_specular
+        file: asset/lut/ibl_brdf_lut.png
+skybox:
+    specular:
         type: cubemap
         x+: asset/textures/skybox/skybox_specular_X+.hdr
         x-: asset/textures/skybox/skybox_specular_X-.hdr
@@ -26,8 +11,7 @@ shader_params:
         y-: asset/textures/skybox/skybox_specular_Z-.hdr
         z+: asset/textures/skybox/skybox_specular_Y+.hdr
         z-: asset/textures/skybox/skybox_specular_Y-.hdr
-    -	
-        name: tex_skybox_irradiance
+    irradiance:
         type: cubemap
         x+: asset/textures/skybox/skybox_irradiance_X+.hdr
         x-: asset/textures/skybox/skybox_irradiance_X-.hdr

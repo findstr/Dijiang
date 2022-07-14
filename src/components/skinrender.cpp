@@ -17,6 +17,12 @@ skinrender::get_material()
 	return material.get();
 }
 
+render::material *
+skinrender::get_shadowcaster()
+{
+	return shadowcaster.get();
+}
+
 render::mesh *
 skinrender::get_mesh() 
 {
@@ -27,6 +33,12 @@ void
 skinrender::set_material(std::shared_ptr<render::material> &mat)
 {
 	material = mat;
+}
+
+void
+skinrender::set_shadowcaster(std::shared_ptr<render::material> &mat)
+{
+	shadowcaster = mat;
 }
 
 void 

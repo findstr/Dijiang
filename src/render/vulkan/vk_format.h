@@ -7,7 +7,7 @@ namespace vulkan {
 
 struct vk_format {
 	constexpr vk_format(VkFormat v) : value_(v) {}
-	constexpr vk_format(texture_format fmt, bool linear = true) {
+	constexpr vk_format(texture_format fmt, bool linear) {
 		if (linear) {
 			switch (fmt) {
 			case texture_format::RGBA64:
@@ -43,10 +43,13 @@ struct vk_format {
 	}
 	constexpr size_t size() {
 		switch (value_) {
+		case VK_FORMAT_R16G16B16A16_UNORM:
 		case VK_FORMAT_R16G16B16A16_SFLOAT:
 			return 8;
+		case VK_FORMAT_R8G8B8A8_UNORM:
 		case VK_FORMAT_R8G8B8A8_SRGB:
 			return 4;
+		case VK_FORMAT_R8G8B8_UNORM:
 		case VK_FORMAT_R8G8B8_SRGB:
 			return 3;
 		default:

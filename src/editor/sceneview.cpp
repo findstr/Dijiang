@@ -36,9 +36,6 @@ sceneview::tick(engine *e, float delta)
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_MenuBar;
 	if (!is_open)
 		return;
-
-	ImGui::ShowDemoWindow();
-
 	ImGui::Begin(title.c_str(), &is_open, window_flags);
 	auto menu_bar_rect = ImGui::GetCurrentWindow()->MenuBarRect();
 	ImVec2 window_pos = ImGui::GetWindowPos();

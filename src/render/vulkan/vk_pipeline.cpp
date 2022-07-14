@@ -11,7 +11,7 @@ VkPrimitiveTopology vk_pipeline::primitive_topolgy =
 	VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
 vk_pipeline *
-vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
+vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest)
 {
 	VkPipeline pipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelinelayout = VK_NULL_HANDLE;
@@ -75,7 +75,6 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)VK_CTX.swapchain.extent.width;
 	viewport.height = (float)VK_CTX.swapchain.extent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
@@ -191,7 +190,7 @@ vk_pipeline::create(vk_pass *pass, vk_shader *shader, bool ztest)
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = pipelinelayout;
-	pipelineInfo.renderPass = pass->get_renderpass();
+	pipelineInfo.renderPass = pass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;

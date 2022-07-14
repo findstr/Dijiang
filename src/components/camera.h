@@ -13,7 +13,7 @@ public:
 	camera(gameobject *go);
 	~camera();
 public:
-	const std::string type() override { return "camera"; }
+	const std::string name() override { return "camera"; }
 	vector3f up() { return transform->rotation * vector3f(0, 1, 0); }
 	vector3f left() { return transform->rotation * vector3f(-1, 0, 0); }
 	vector3f right() { return transform->rotation * vector3f(1, 0, 0); }
@@ -28,6 +28,8 @@ public:
 	float aspect = 16.0f/9.9f;
 	float clip_near_plane = 1.f;
 	float clip_far_plane = 100.f;
+	bool perspective = false;
+	float orthographic_size = 5.0f;
 	rect viewport = rect(0.f, 0.f, 1.f, 1.f);
 protected:
 	bool regged = false;

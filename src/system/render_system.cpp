@@ -1,4 +1,5 @@
 #include "system/render_system.h"
+#include "level.h"
 #ifdef USE_VULKAN
 #include "render/vulkan/vk_ctx.h"
 #include "render/vulkan/vk_surface.h"
@@ -53,20 +54,7 @@ to_mat4(const matrix4f &m)
 }
 
 static void
-update_uniformbuffer_per_frame(render::ubo::per_frame *ubo)
-{
-	float p = 15.0f;
-
-	ubo->engine_light_ambient = glm::vec3(1.0f);
-	ubo->engine_light_direction.x = p;
-	ubo->engine_light_direction.y = p*0.5f;
-	ubo->engine_light_direction.z = p;
-
-	ubo->engine_light_radiance = glm::vec3(1.0f);
-}
-
-static void
-update_uniformbuffer_per_object(render::ubo::per_object *ubo, const draw_object &draw) {
+update_uniformbuffer_per_object(render::ubo::per_camera *ubo_cam, render::ubo::per_object *ubo, const draw_object &draw) {
 	vector3f axis;
 	auto &pos = draw.position;
 	auto &scale = draw.scale;
@@ -75,12 +63,19 @@ update_uniformbuffer_per_object(render::ubo::per_object *ubo, const draw_object 
 	model = glm::translate(model, glm::vec3(pos.x(), pos.y(), pos.z()));
 	model = glm::rotate(model, glm::radians(angle), glm::vec3(axis.x(), axis.y(), axis.z()));
 	ubo->model = to_mat4(matrix4f::trs(draw.position, draw.rotation, draw.scale));
+	ubo->model_view_proj = ubo_cam->view_proj * ubo->model;
 	if (draw.skeleton_pose != nullptr) {
 		int bone_count = std::min(draw.skeleton_pose->size(), ubo->skeleton_pose.size());
 		for (int k = 0; k < bone_count; k++) {
 			ubo->skeleton_pose[k] = to_mat4((*draw.skeleton_pose)[k].matrix);
 		}
 	}
+}
+	
+void
+render_system::init_lighting()
+{
+	vulkan::vk_ctx_init_lighting();
 }
 
 int
@@ -118,7 +113,23 @@ render_system::frame_begin(float delta)
 	if (vkBeginCommandBuffer(cmdbuf, &begin) != VK_SUCCESS)
 		return 1;
 
+	
+	uniform_per_frame->frame_begin(1024);
+	uniform_per_camera->frame_begin(1024);
+	uniform_per_object->frame_begin(1024);
+
+	return 0;
+}
+
+void 
+render_system::renderpass_begin(bool clear)
+{
+	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
+	vulkan::VK_FRAMEBUFFER.switch_render_target();
 	VkRenderPassBeginInfo renderPassInfo{};
+	std::array<VkClearValue, 2> clearColor{};
+	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
+	clearColor[1].depthStencil = { 1.0f, 0 };
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = vulkan::VK_CTX.render_pass;
 	renderPassInfo.framebuffer = vulkan::VK_FRAMEBUFFER.current();
@@ -127,34 +138,109 @@ render_system::frame_begin(float delta)
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
 	renderPassInfo.pClearValues = clearColor.data();
 	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-	uniform_per_frame->frame_begin(1024);
-	uniform_per_camera->frame_begin(1024);
-	uniform_per_object->frame_begin(1024);
-	auto *per_frame_buffer = uniform_per_frame->alloc();
-	update_uniformbuffer_per_frame(per_frame_buffer);
-	ubo_offset[vulkan::ENGINE_PER_FRAME_BINDING] = uniform_per_frame->offset();
-	uniform_per_frame->unmap();
-	return 0;
+}
+
+void
+render_system::renderpass_end()
+{
+	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
+	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
+}
+
+	
+void
+render_system::shadowpass_begin()
+{
+	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
+	VkRenderPassBeginInfo renderPassInfo{};
+	std::array<VkClearValue, 2> clearColor{};
+	vulkan::VK_FRAMEBUFFER.switch_shadow_target();
+	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
+	clearColor[1].depthStencil = { 1.0f, 0 };
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = vulkan::VK_CTX.shadowmap_pass;
+	renderPassInfo.framebuffer = vulkan::VK_FRAMEBUFFER.current();
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = vulkan::VK_CTX.swapchain.extent;
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
+	renderPassInfo.pClearValues = clearColor.data();
+	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void
+render_system::shadowpass_end()
+{
+	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
+	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
 }
 	
 void 
-render_system::set_camera(camera *cam)
+render_system::set_light(light *light)
 {
-	auto *ubo = uniform_per_camera->alloc();
-	auto eye = cam->transform->position;
-	auto eye_dir = eye + cam->forward() * 5.0f;
-	auto up = cam->up();
-	ubo->engine_camera_pos = glm::vec3(
-		cam->transform->position.x(),
-		cam->transform->position.y(),
-		cam->transform->position.z());
-	ubo->view = glm::lookAt(
+	ubo_per_frame = uniform_per_frame->alloc();
+	vector3f direction = light->direction().normalized();
+	auto c = light->color;
+	c.r *= light->intensity;
+	c.g *= light->intensity;
+	c.b *= light->intensity;
+	ubo_per_frame->engine_light_ambient = glm::vec4(1.0f);
+	ubo_per_frame->engine_light_direction.x = direction.x();
+	ubo_per_frame->engine_light_direction.y = direction.y();
+	ubo_per_frame->engine_light_direction.z = direction.z();
+	ubo_per_frame->engine_light_radiance = glm::vec4(c.r, c.g, c.b, 1.0f);
+
+	camera cam(light->go);
+	cam.perspective = false;
+	cam.orthographic_size = 30.f;
+	cam.viewport.x = 0;
+	cam.viewport.y = 0;
+	cam.viewport.width = 1.0;
+	cam.viewport.height = 1.0;
+
+	auto eye = cam.transform->position;
+	auto eye_dir = eye + cam.forward() * 5.0f;
+	auto up = cam.up();
+
+	ubo_per_frame->engine_light_matrix_view[0] = glm::lookAtRH(
 			glm::vec3(eye.x(), eye.y(), eye.z()),
 			glm::vec3(eye_dir.x(), eye_dir.y(), eye_dir.z()),
 			glm::vec3(up.x(), up.y(), up.z()));
-	ubo->proj = glm::perspective(glm::radians(cam->fov), cam->aspect,
-		cam->clip_near_plane, cam->clip_far_plane);
-	ubo->proj[1][1] *= -1;
+	ubo_per_frame->engine_light_matrix_project[0] = glm::orthoRH_ZO(
+			-cam.orthographic_size, cam.orthographic_size,
+			-cam.orthographic_size, cam.orthographic_size, 
+			cam.clip_near_plane, cam.clip_far_plane);
+	ubo_per_frame->engine_light_matrix_project[0][1][1] *= -1;
+	ubo_offset[vulkan::ENGINE_PER_FRAME_BINDING] = uniform_per_frame->offset();
+	uniform_per_frame->unmap();
+}
+
+void 
+render_system::set_camera(camera *cam)
+{
+	ubo_per_camera = uniform_per_camera->alloc();
+	auto eye = cam->transform->position;
+	auto eye_dir = eye + cam->forward() * 5.0f;
+	auto up = cam->up();
+	ubo_per_camera->engine_camera_pos = glm::vec4(
+		cam->transform->position.x(),
+		cam->transform->position.y(),
+		cam->transform->position.z(), 1.0);
+	ubo_per_camera->view = glm::lookAt(
+			glm::vec3(eye.x(), eye.y(), eye.z()),
+			glm::vec3(eye_dir.x(), eye_dir.y(), eye_dir.z()),
+			glm::vec3(up.x(), up.y(), up.z()));
+	if (cam->perspective) {
+		ubo_per_camera->proj = glm::perspectiveRH_ZO(
+			glm::radians(cam->fov), cam->aspect,
+			cam->clip_near_plane, cam->clip_far_plane);
+	} else {
+		ubo_per_camera->proj = glm::orthoRH_ZO(
+			-cam->orthographic_size, cam->orthographic_size,
+			-cam->orthographic_size, cam->orthographic_size, 
+			cam->clip_near_plane, cam->clip_far_plane);
+	}
+	ubo_per_camera->proj[1][1] *= -1;
+	ubo_per_camera->view_proj = ubo_per_camera->proj * ubo_per_camera->view;
 	ubo_offset[vulkan::ENGINE_PER_CAMERA_BINDING] = uniform_per_camera->offset();
 	viewport.x = cam->viewport.x * vulkan::VK_CTX.swapchain.extent.width;
 	viewport.y = cam->viewport.y * vulkan::VK_CTX.swapchain.extent.height;
@@ -163,17 +249,6 @@ render_system::set_camera(camera *cam)
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	uniform_per_camera->unmap();
-
-	VkClearAttachment clear;
-	VkClearRect clear_rect;
-	clear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;// | VK_IMAGE_ASPECT_STENCIL_BIT;
-	clear.clearValue.color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-	clear.clearValue.depthStencil = { 1.0f, 0 };
-	clear_rect.baseArrayLayer = 0;
-	clear_rect.layerCount = 1;
-	clear_rect.rect.extent = vulkan::VK_CTX.swapchain.extent;
-	clear_rect.rect.offset = {0, 0};
-	vkCmdClearAttachments(vulkan::VK_CTX.cmdbuf, 1, &clear, 1, &clear_rect);
 }
 
 void
@@ -184,7 +259,7 @@ render_system::draw(draw_object &draw)
 	vulkan::vk_material *mat = (vulkan::vk_material *)draw.material;
 	ubo_offset[vulkan::ENGINE_PER_OBJECT_BINDING] = uniform_per_object->offset();
 	mesh->flush();
-	update_uniformbuffer_per_object(ubo, draw);
+	update_uniformbuffer_per_object(ubo_per_camera, ubo, draw);
 	uniform_per_object->unmap();
 	vkCmdBindPipeline(vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline->handle);
 #if IS_EDITOR
@@ -216,16 +291,22 @@ render_system::draw(draw_object &draw)
 	vkCmdDrawIndexed(vulkan::VK_CTX.cmdbuf, mesh->index_count, 1, 0, 0, 0);
 }
 
+
 void
 render_system::frame_end(float delta)
 {
 	vulkan::surface_post_tick(surface);
-	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
-	if (vkEndCommandBuffer(vulkan::VK_CTX.cmdbuf) != VK_SUCCESS)
-		return ;
 	uniform_per_frame->frame_end();
 	uniform_per_camera->frame_end();
 	uniform_per_object->frame_end();
+
+}
+
+void
+render_system::frame_submit()
+{
+	if (vkEndCommandBuffer(vulkan::VK_CTX.cmdbuf) != VK_SUCCESS)
+		return ;
 	vulkan::VK_FRAMEBUFFER.submit(vulkan::VK_CTX.cmdbuf);
 	vulkan::vk_ctx_frame_end();
 }

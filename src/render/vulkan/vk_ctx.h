@@ -30,6 +30,7 @@ namespace vulkan {
 		VkSurfaceKHR surface = VK_NULL_HANDLE;
 		VkDebugReportCallbackEXT dbgcallback = VK_NULL_HANDLE;
 		VkFormat depth_format;
+		VkRenderPass shadowmap_pass;
 		VkRenderPass render_pass;
 		int graphicsfamily = -1;
 		int frame_index = 0;
@@ -39,6 +40,7 @@ namespace vulkan {
 	extern const struct vk_ctx VK_CTX;
 	int vk_ctx_init(const char *name, surface *s, int width, int height);
 	void vk_ctx_recreate_swapchain(int width, int height);
+	void vk_ctx_init_lighting();
 	void vk_ctx_frame_begin();
 	void vk_ctx_frame_end();
 	void vk_ctx_cleanup();

@@ -11,7 +11,7 @@ class material {
 public:
 	virtual ~material() {};
 public:
-	static material *create(std::shared_ptr<shader> &s, bool ztest);
+	static material *create(std::shared_ptr<shader> &s, bool ztest, bool shadowcaster = false);
 	const shader *get_shader() const { return shader.get(); }
 	virtual void set_shader(std::shared_ptr<shader> &s) = 0;
 	virtual void set_texture(const std::string &name,

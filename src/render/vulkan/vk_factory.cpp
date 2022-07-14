@@ -15,9 +15,9 @@ type::create(__VA_ARGS__) {\
 FACTOR(mesh);
 
 material*
-material::create(std::shared_ptr<class shader> &s, bool ztest) 
+material::create(std::shared_ptr<class shader> &s, bool ztest, bool shadowcaster) 
 {
-	return new vulkan::vk_material(s, ztest); 
+	return new vulkan::vk_material(s, ztest, shadowcaster); 
 }
 
 cubemap *

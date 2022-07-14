@@ -25,6 +25,7 @@ public:
 	static void load(const std::string &path);
 	static void tick_all(float delta);
 	static void cull(camera *cam, std::vector<draw_object> &list);
+	static void cull_shadowcaster(camera *cam, std::vector<draw_object> &list);
 	static const std::vector<std::unique_ptr<level>> &all_levels() { return levels; }
 private:
 	static std::vector<std::unique_ptr<level>> levels;

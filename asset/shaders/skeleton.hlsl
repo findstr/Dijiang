@@ -13,32 +13,30 @@ struct vsin {
 struct vsout {
 	float4 pos : SV_POSITION;
 	float3 color : COLOR0;
-	float3 normal : NORMAL0;
 	float2 uv : TEXCOORD0; 
-	float4 t_to_w0: TEXCOORD1;
-	float4 t_to_w1: TEXCOORD2;
-	float4 t_to_w2: TEXCOORD3;
+	float4 world_normal: TEXCOORD1;
+	float4 world_tangent: TEXCOORD2;
+	float4 world_binormal: TEXCOORD3;
 	
 };
 
 vsout vert(vsin input) {
 	vsout output;
-	float3 pos = engine_skeleton_vertex_blend(input.position, input.skeleton);
+	float4x4 model_matrix = mul(engine_matrix_model, engine_skeleton_vertex_blend(input.skeleton));
 	float4x4 vp = mul(engine_matrix_proj,  engine_matrix_view);
-	float4x4 mvp = mul(engine_matrix_proj, mul(engine_matrix_view, engine_matrix_model));
-	output.pos = mul(mvp, float4(pos, 1.0));
+	float4x4 mvp = mul(engine_matrix_proj, mul(engine_matrix_view, model_matrix));
+	output.pos = mul(mvp, float4(input.position, 1.0));
 	output.color = input.color;
-	output.normal = mul(float4(input.normal, 0), engine_matrix_model).xyz;
 	output.uv = input.uv;
 	
-	float3 world_pos = mul(engine_matrix_model, float4(pos, 1.0)).xyz;
-	float3 world_normal = mul(engine_matrix_model, float4(input.normal, 1.0)).xyz;
-	float3 world_tangent = mul(engine_matrix_model, float4(input.tangent, 1.0)).xyz;
-	float3 world_binormal = cross(world_normal, world_tangent).xyz * -1;
+	float3 world_pos = mul(model_matrix, float4(input.position, 1.0)).xyz;
+	float3 world_normal = normalize(mul(model_matrix, float4(input.normal, 0.0)).xyz);
+	float3 world_tangent = normalize(mul(model_matrix, float4(input.tangent, 0.0)).xyz);
+	float3 world_binormal = normalize(cross(world_normal, world_tangent));
 	
-	output.t_to_w0 = float4(world_tangent.x, world_binormal.x, world_normal.x, world_pos.x);
-	output.t_to_w1 = float4(world_tangent.y, world_binormal.y, world_normal.y, world_pos.y);
-	output.t_to_w2 = float4(world_tangent.z, world_binormal.z, world_normal.z, world_pos.z); 
+	output.world_normal = float4(world_normal, world_pos.x);
+	output.world_tangent = float4(world_tangent, world_pos.y);
+	output.world_binormal = float4(world_binormal, world_pos.z);
 	
 	return output;
 }
@@ -47,39 +45,48 @@ Texture2D tex_albedo;
 Texture2D tex_normal;
 Texture2D tex_roughness;
 SamplerState tex_albedo_sampler;
-
-TextureCube tex_skybox_specular;
-SamplerState tex_skybox_specular_sampler;
-TextureCube tex_skybox_irradiance;
-SamplerState tex_skybox_irradiance_sampler;
-
-
+ 
+float3 prefilteredReflection(float3 R, float roughness)
+{
+	const float MAX_REFLECTION_LOD = 9.0; // todo: param/const
+	float lod = roughness * MAX_REFLECTION_LOD;
+	float lodf = floor(lod);
+	float lodc = ceil(lod);
+	float3 a = engine_skybox_specular.SampleLevel(engine_skybox_specular_sampler, R, lodf).rgb;
+	float3 b = engine_skybox_specular.SampleLevel(engine_skybox_specular_sampler, R, lodc).rgb;
+	return lerp(a, b, lod - lodf);
+}
 
 float4 frag(vsout input) : SV_TARGET
 {
 	engine_light_param param;
 	float4 metal_roughness = tex_roughness.Sample(tex_albedo_sampler, input.uv);
 	float3 normal = tex_normal.Sample(tex_albedo_sampler, input.uv).xyz * 2.0 - 1.0;
-	float3 world_pos = float3(input.t_to_w0.w, input.t_to_w1.w, input.t_to_w2.w);
+	float3 world_pos = float3(input.world_normal.w, input.world_tangent.w, input.world_binormal.w);
 	float4 albedo = tex_albedo.Sample(tex_albedo_sampler, input.uv);
+	
 	param.albedo = albedo.rgb;
 	param.metallic = metal_roughness.z;
 	param.roughness = metal_roughness.y;
  
-	param.world_normal = normalize(float3(dot(input.t_to_w0.xyz, normal), dot(input.t_to_w1.xyz, normal), dot(input.t_to_w2.xyz, normal)));
+	float3 N = normalize(input.world_normal.xyz);
+	float3 T = normalize(input.world_tangent.xyz);
+	float3 B = normalize(cross(N, T));
+	float3x3 TBN = transpose(float3x3(T, B, N));
+ 
+	param.world_normal = normalize(mul(TBN, normal));
 	param.world_light_dir = normalize(engine_light_dir);
 	param.world_view_dir = normalize(engine_world_view_dir(world_pos));
 	param.light_radiance = engine_light_intensity;
-		
-	const float MAX_REFLECTION_LOD = 8.0;
-	float3 R = reflect(-param.world_view_dir, param.world_normal);
-	float3 ambient = tex_skybox_irradiance.Sample(tex_skybox_irradiance_sampler, param.world_normal).rgb;
-	float3 prefilterColor = tex_skybox_specular.SampleLevel(tex_skybox_specular_sampler, R, param.roughness * MAX_REFLECTION_LOD).rgb;
-	
 
-	param.env_ambient = ambient;
-	param.env_reflection = prefilterColor;
+
+	float3 R = reflect(-param.world_view_dir, N);
+	 
 	
-	return float4(engine_light_pbs(param), albedo.a);
+	param.env_ambient = engine_skybox_irradiance.Sample(engine_skybox_irradiance_sampler, N).rgb;
+	param.env_reflection = prefilteredReflection(R, param.roughness);
+	
+	float3 color = engine_light_pbs(param);
+	return float4(color, 1);
 }
 

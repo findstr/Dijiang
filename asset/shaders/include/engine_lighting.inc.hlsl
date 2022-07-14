@@ -78,10 +78,36 @@ float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
 	return F0 + (max(float3(smoothness, smoothness, smoothness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+float3 engine_sample_skybox_irradiance(float3 N)
+{
+	return engine_skybox_irradiance.Sample(engine_skybox_irradiance_sampler, N).rgb;
+}
 
-Texture2D tex_brdf_schilk;
-SamplerState tex_brdf_schilk_sampler;
+float3 engine_sample_skybox_reflection(float3 R, float roughness)
+{
+	const float MAX_REFLECTION_LOD = 9.0; // todo: param/const
+	float lod = roughness * MAX_REFLECTION_LOD;
+	float lodf = floor(lod);
+	float lodc = ceil(lod);
+	float3 a = engine_skybox_specular.SampleLevel(engine_skybox_specular_sampler, R, lodf).rgb;
+	float3 b = engine_skybox_specular.SampleLevel(engine_skybox_specular_sampler, R, lodc).rgb;
+	return lerp(a, b, lod - lodf);
+}
 
+float engine_sample_shadowmap_depth(int i, float3 worldpos)
+{
+	float shadow = 1.0;
+	float4x4 vp = mul(engine_light_matrix_proj[i], engine_light_matrix_view[i]);
+	float4 pos = mul(vp, float4(worldpos, 1.0));
+	float3 projCoords = pos.xyz / pos.w;
+	projCoords.xy = projCoords.xy * 0.5 + float2(0.5, 0.5);
+	float dist = engine_shadowmap[i].Sample(engine_shadowmap_sampler, projCoords.xy).r;
+	if (projCoords.z > 1.0)
+		shadow = 1.0;
+	else
+		shadow = projCoords.z < (dist + 0.005) ? 1.0 : 0.0;
+	return shadow;
+}
 
 float3 engine_light_pbs(engine_light_param args)
 {
@@ -104,19 +130,18 @@ float3 engine_light_pbs(engine_light_param args)
 	float3 Lo, ambient;
 	{
 		float3 F = fresnelSchlick(NdotV, F0);
-		float NDF = DistributionGGX(N, H, roughness);
+		float D = DistributionGGX(N, H, roughness);
 		float G = GeometrySmith(N, V, L, roughness);
 
-		float3 nominator = NDF * G * F;
+		float3 nominator = D * G * F;
 		float denominator = 4.0 * NdotV * NdotL + 0.001;
 		float3 specular = nominator / denominator;
-		
-		float3 kS = F;
-		float3 kD = (float3(1,1,1) - kS) * (1.0 - args.metallic);
-		Lo = (kD * args.albedo / ENGINE_PI + kS * specular) * radiance * NdotL;
+
+		float3 kD = (float3(1,1,1) - F) * (1.0 - args.metallic);
+		Lo = (kD * args.albedo / ENGINE_PI + (float3(1,1,1) - kD) * specular) * radiance * NdotL;
 	}
 	{
-		float2 brdf = tex_brdf_schilk.Sample(tex_brdf_schilk_sampler, float2(NdotV, roughness)).rg;
+		float2 brdf = engine_brdf_tex.Sample(engine_brdf_tex_sampler, float2(NdotV, roughness)).rg;
 		float3 reflection = args.env_reflection;
 		float3 F = fresnelSchlickRoughness(NdotV, F0, roughness);
 		float3 specular = reflection * (F * brdf.x + brdf.y);

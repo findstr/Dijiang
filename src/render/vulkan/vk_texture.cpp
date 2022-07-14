@@ -137,7 +137,7 @@ vk_texture::transition_layout(
 	VkImageLayout to,
 	int layer_count)
 {
-	vk_format format(tex->format);
+	vk_format format(tex->format, tex->linear);
 	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
 
 	VkPipelineStageFlags srcStage;
@@ -227,7 +227,7 @@ vk_texture::gen_mipmap(const render::texture *tex, int layer_count)
 {
 	if (tex->miplevels <= 1)
 		return ;
-	vk_format image_format(tex->format);
+	vk_format image_format(tex->format, tex->linear);
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(VK_CTX.phydevice, image_format, &formatProperties);
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {

@@ -9,7 +9,7 @@ struct engine_skeleton_vertex {
 	float4 bone_weights : BLENDWEIGHT0;
 };
 
-float3 engine_skeleton_vertex_blend(float3 pos, engine_skeleton_vertex blend)
+float4x4 engine_skeleton_vertex_blend(engine_skeleton_vertex blend)
 {
 	float4x4 bone_blending = {
 		0, 0, 0, 0,
@@ -19,7 +19,7 @@ float3 engine_skeleton_vertex_blend(float3 pos, engine_skeleton_vertex blend)
 	};	
 	for (int i = 0; i < 4; i++)
 		bone_blending += engine_skeleton_matrix[blend.bone_indices[i]] * blend.bone_weights[i];
-	return mul(bone_blending, float4(pos, 1.0)).xyz;
+	return bone_blending;
 }
  
 #endif

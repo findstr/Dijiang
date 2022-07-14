@@ -18,7 +18,7 @@ public:
 	~luacomponent();
 	void set_attr(const std::string &key, float value);
 	void set_attr(const std::string &key, const std::string &value);
-	const std::string type() override { return type_; }
+	const std::string name() override { return type_; }
 	void start() override;
 	void tick(float delta) override;
 	void pre_tick(float delta) override;

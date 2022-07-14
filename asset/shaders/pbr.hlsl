@@ -48,19 +48,14 @@ Texture2D tex_normal;
 Texture2D tex_roughness;
 SamplerState tex_albedo_sampler;
 
-TextureCube tex_skybox_specular;
-SamplerState tex_skybox_specular_sampler;
-TextureCube tex_skybox_irradiance;
-SamplerState tex_skybox_irradiance_sampler;
-
 float3 prefilteredReflection(float3 R, float roughness)
 {
 	const float MAX_REFLECTION_LOD = 9.0; // todo: param/const
 	float lod = roughness * MAX_REFLECTION_LOD;
 	float lodf = floor(lod);
 	float lodc = ceil(lod);
-	float3 a = tex_skybox_specular.SampleLevel(tex_skybox_specular_sampler, R, lodf).rgb;
-	float3 b = tex_skybox_specular.SampleLevel(tex_skybox_specular_sampler, R, lodc).rgb;
+	float3 a = engine_skybox_specular.SampleLevel(engine_skybox_specular_sampler, R, lodf).rgb;
+	float3 b = engine_skybox_specular.SampleLevel(engine_skybox_specular_sampler, R, lodc).rgb;
 	return lerp(a, b, lod - lodf);
 }
 
@@ -99,10 +94,11 @@ float4 frag(vsout input) : SV_TARGET
 	float3 R = reflect(-param.world_view_dir, N);
 	 
 	
-	param.env_ambient = tex_skybox_irradiance.Sample(tex_skybox_irradiance_sampler, N).rgb;
-	param.env_reflection = prefilteredReflection(R, param.roughness);
+	param.env_ambient = engine_sample_skybox_irradiance(N);
+	param.env_reflection = engine_sample_skybox_reflection(R, param.roughness);
 	
 	float3 color = engine_light_pbs(param);
-	return float4(color, 1);
+	float shadow = engine_sample_shadowmap_depth(0, world_pos);
+	return float4(color * shadow, 1);
 }
 

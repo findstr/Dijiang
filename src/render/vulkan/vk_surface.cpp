@@ -9,14 +9,12 @@
 #include "backends/imgui_impl_vulkan.h"
 #include "vk_input.h"
 #include "vk_surface.h"
-#include "vk_pass.h"
 
 namespace engine {
 namespace vulkan {
 
 struct surface {
 	GLFWwindow *window = nullptr;
-	std::shared_ptr<vk_pass> vk_pass;
 };
 
 std::vector<const char *>
@@ -222,8 +220,7 @@ imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
 	init_info.MinImageCount = conf::MAX_FRAMES_IN_FLIGHT;
 	init_info.ImageCount    = conf::MAX_FRAMES_IN_FLIGHT;
 	
-	s->vk_pass.reset(new vk_pass());
-	ImGui_ImplVulkan_Init(&init_info, s->vk_pass->get_renderpass());
+	ImGui_ImplVulkan_Init(&init_info, VK_CTX.render_pass);
 
 	// fonts upload
 	fonts_upload(s);
@@ -291,10 +288,10 @@ surface_pre_tick(struct surface *s)
 int
 surface_tick(struct surface *s)
 {
-	// Start the Dear ImGui frame
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
+	// Start the Dear ImGui frame
 	return 0;
 }
 
@@ -302,8 +299,9 @@ int
 surface_post_tick(struct surface *s) 
 {
         // Rendering
-        ImGui::Render();
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), VK_CTX.cmdbuf);
+	ImGui::EndFrame();
+	//ImGui::Render();
+	//ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), VK_CTX.cmdbuf);
 	return 0;
 }
 

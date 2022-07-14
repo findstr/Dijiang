@@ -20,7 +20,7 @@ public:
 	std::vector<animation::skeleton::pose> &get_current_pose() { return current_pose; }
 
 public:
-	const std::string type() override { return "animator"; }
+	const std::string name() override { return "animator"; }
 	void tick(float delta) override;
 	double progress = 0.0f;
 	double total = 0.76666998863220215f;

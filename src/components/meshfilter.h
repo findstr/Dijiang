@@ -13,7 +13,7 @@ public:
 	meshfilter(gameobject *go, std::shared_ptr<render::mesh> &m);
 	render::mesh *get_mesh();
 	void set_mesh(std::shared_ptr<render::mesh> &m);
-	const std::string type() override { return "meshfilter"; }
+	const std::string name() override { return "meshfilter"; }
 };
 
 }

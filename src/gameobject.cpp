@@ -41,10 +41,10 @@ gameobject::add_component(component *c)
 }
 
 component *
-gameobject::get_component(const std::string &type)
+gameobject::get_component(const std::string &name)
 {
 	for (auto c:components) {
-		if (c->type() == type)
+		if (c->name() == name)
 			return c;
 	}
 	return nullptr;
@@ -57,9 +57,9 @@ gameobject::get_all_components() const
 }
 
 void
-gameobject::remove_component(const std::string &type)
+gameobject::remove_component(const std::string &name)
 {
-	std::erase_if(components, [&type](component *c) {return c->type() == type;});
+	std::erase_if(components, [&name](component *c) {return c->name() == name;});
 }
 
 void

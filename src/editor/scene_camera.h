@@ -9,7 +9,7 @@ class scene_camera: public camera {
 public:
 	scene_camera(gameobject *go);
 public:
-	const std::string type() override { return "scene_camera"; }
+	const std::string name() override { return "scene_camera"; }
 	void render();
 	void show_skeleton(bool enable) { show_skeleton_ = enable; }
 private:

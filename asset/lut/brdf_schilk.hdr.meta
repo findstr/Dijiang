@@ -1,6 +1,6 @@
 version: 1
 type: texture2d
-colorspace: l
+colorspace: gamma
 format: RGBA32
 read_enable: 0
 mipmap:

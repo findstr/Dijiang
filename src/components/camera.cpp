@@ -4,7 +4,8 @@
 
 namespace engine {
 
-camera::camera(gameobject *go) : component(go)
+camera::camera(gameobject *go) : 
+	component(go)
 {
 }
 
@@ -31,11 +32,30 @@ camera::unreg()
 void
 camera::render()
 {
-	level::cull(this, draw_list);
-	RENDER_SYSTEM.set_camera(this);
+	RENDER_SYSTEM.shadowpass_begin();
+	auto *li = light::all_lights()[0];
+	camera light_cam(li->go);
+	light_cam.perspective = false;
+	light_cam.orthographic_size = 30.f;
+	light_cam.viewport.x = 0;
+	light_cam.viewport.y = 0;
+	light_cam.viewport.width = 1.0;
+	light_cam.viewport.height = 1.0;
+	RENDER_SYSTEM.set_light(light::all_lights()[0]);
+	RENDER_SYSTEM.set_camera(&light_cam);
+	level::cull_shadowcaster(this, draw_list);
 	for (auto &d:draw_list) { 
 		RENDER_SYSTEM.draw(d);
 	}
+	RENDER_SYSTEM.shadowpass_end();
+	RENDER_SYSTEM.renderpass_begin();
+	draw_list.clear();
+	RENDER_SYSTEM.set_camera(this);
+	level::cull(this, draw_list);
+	for (auto &d:draw_list) { 
+		RENDER_SYSTEM.draw(d);
+	}
+	RENDER_SYSTEM.renderpass_end();
 	draw_list.clear();
 }
 
@@ -45,6 +65,7 @@ camera::all_cameras()
 {
 	return camera_list;
 }
+
 
 
 }

@@ -39,7 +39,7 @@ hierarchy::go_inspector::draw()
 	auto &all_components = go->get_all_components();
 	for (auto *c: all_components) {
 		ImGui::Separator();
-		ImGui::LabelText("", c->type().c_str());
+		ImGui::LabelText("", c->name().c_str());
 	}
 }
 

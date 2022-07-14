@@ -30,9 +30,9 @@ public:
 	constexpr void set_active(bool enable) { active = enable; }
 public:
 	void add_component(component *);
-	component *get_component(const std::string &type);
+	component *get_component(const std::string &name);
 	const std::vector<component *> get_all_components() const;
-	void remove_component(const std::string &type);
+	void remove_component(const std::string &name);
 	void start();
 	void tick(float delta);
 	void pre_tick(float delta);

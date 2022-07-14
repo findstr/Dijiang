@@ -127,7 +127,7 @@ editor::tick(float delta)
 	if (insp != nullptr)
 		inspector = insp;
 	gameview.tick(engine, delta);
-	sceneview.tick(engine, delta);
+	//sceneview.tick(engine, delta);
 	draw_inspector(inspector);
 }
 

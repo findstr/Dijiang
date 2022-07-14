@@ -10,17 +10,17 @@ protected:
 	bool has_tick_ = false;
 	bool has_pre_tick_ = false;
 	bool has_post_tick_ = false;
-	gameobject *go = nullptr;
-	component *get_sibling(const std::string &type) { return go->get_component(type); }
+	component *get_sibling(const std::string &name) { return go->get_component(name); }
 public:
 	component(gameobject *parent): go(parent) { transform = &go->transform;}
 	transform *transform = nullptr;
+	gameobject *go = nullptr;
 	bool has_tick() const { return has_tick_; }
 	bool has_pre_tick() const { return has_pre_tick_; }
 	bool has_post_tick() const { return has_post_tick_; }
 	virtual ~component() { go = nullptr; }
 public:
-	virtual const std::string type() = 0;
+	virtual const std::string name() = 0;
 	virtual void start() {};
 	virtual void tick(float delta) {};
 	virtual void pre_tick(float delta) {};
