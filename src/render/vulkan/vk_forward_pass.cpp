@@ -1,10 +1,10 @@
 #include "vk_object.h"
-#include "vk_pass.h"
+#include "vk_forward_pass.h"
 
 namespace engine {
 namespace vulkan {
 
-vk_pass::vk_pass()
+vk_forward_pass::vk_forward_pass()
 {
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = VK_CTX.swapchain.imageformat;
@@ -62,23 +62,6 @@ vk_pass::vk_pass()
 
 	auto result = vkCreateRenderPass(VK_CTX.device, &renderPassInfo, nullptr, &renderpass);
 	assert(result == VK_SUCCESS);
-}
-
-vk_pass::~vk_pass()
-{
-	vkDestroyRenderPass(VK_CTX.device, renderpass, nullptr);
-}
-
-VkFormat
-vk_pass::get_depth_format()
-{
-	return depth_format;
-}
-
-VkRenderPass
-vk_pass::get_renderpass()
-{
-	return renderpass;
 }
 
 }}

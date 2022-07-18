@@ -23,6 +23,7 @@ namespace vulkan {
 		VkQueue presentqueue = VK_NULL_HANDLE;
 		VkDescriptorPool descriptorpool = VK_NULL_HANDLE;
 		VmaAllocator allocator = VK_NULL_HANDLE;
+		VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
 		VkDescriptorSetLayout engine_desc_set_layout = VK_NULL_HANDLE;
 		VkDescriptorSet engine_desc_set[conf::MAX_FRAMES_IN_FLIGHT];
 		VkCommandPool commandpool;
@@ -30,8 +31,6 @@ namespace vulkan {
 		VkSurfaceKHR surface = VK_NULL_HANDLE;
 		VkDebugReportCallbackEXT dbgcallback = VK_NULL_HANDLE;
 		VkFormat depth_format;
-		VkRenderPass shadowmap_pass;
-		VkRenderPass render_pass;
 		int graphicsfamily = -1;
 		int frame_index = 0;
 		VkCommandBuffer cmdbuf = VK_NULL_HANDLE;

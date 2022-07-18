@@ -14,7 +14,7 @@
 //	重构资源管理，分为editor资源管理和运行时资源管理
 //	重构AnimationSystem, InputSystem, ParticleSystem
 //	component.name, shader.variable_name改用字符串池 str2int
-//	每个相机需要一个render_pass
+//	对象池
 
 int main()
 {

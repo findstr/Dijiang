@@ -342,19 +342,27 @@ load_shader(const std::string &file)
 }
 
 std::shared_ptr<render::material>
-load_material(const std::string &file, bool shadowcaster)
+load_material(const std::string &file)
 {
 	auto &mat = mat_pool[file];
 	if (mat != nullptr)
 		return mat;
+	render_pass::path path;
 	YAML::Node root = YAML::LoadFile(file);
 	bool ztest = true;
 	if (root["ztest"])
 		ztest = root["ztest"].as<std::string>() == "on";
+	auto render_path = root["render_path"].as<std::string>();
+	if (render_path == "forward")
+		path = render_pass::FORWARD;
+	else if (render_path == "shadow")
+		path = render_pass::SHADOW;
+	else
+		assert(!"unsupport render path");
 	auto shader_file = root["shader_file"].as<std::string>();
 	std::cout << root["render_queue"].as<std::string>() << shader_file << std::endl;
 	auto shader = load_shader(shader_file);
-	auto *m = render::material::create(shader, ztest, shadowcaster);
+	auto *m = render::material::create(path, shader, ztest);
 	mat.reset(m);
 	auto params = root["shader_params"];
 	for (int i = 0; i < params.size(); i++) {
@@ -598,17 +606,15 @@ parse_meshfilter(meshfilter *mf, YAML::Node n)
 }
 
 static void
-parse_meshrender(meshrender *mr, YAML::Node n)
+parse_meshrender(meshrender *mr, YAML::Node root)
 {
-	auto path = n["material"].as<std::string>();
-	auto material = load_material(path, false);
-	mr->set_material(material);
-	if (n["shadowcaster"]) {
-		auto path = n["shadowcaster"].as<std::string>();
-		auto m = load_material(path, true);
-		mr->set_shadowcaster(m);
+	auto materials = root["material"];
+	for (int i = 0; i < materials.size(); i++) {
+		auto n = materials[i];
+		auto path = n.as<std::string>();
+		auto material = load_material(path);
+		mr->add_material(material);
 	}
-	std::cout << "meshrender" << path << std::endl;
 }
 
 static void
@@ -646,7 +652,12 @@ static void
 parse_skinrender(skinrender *sr, YAML::Node n) 
 {
 	auto mesh = load_mesh(n["mesh"].as<std::string>());
-	auto mat = load_material(n["material"].as<std::string>(), false);
+	auto mats = n["material"];
+	for (int i = 0; i < mats.size(); i++) {
+		auto path = mats[i].as<std::string>();
+		auto material = load_material(path);
+		sr->add_material(material);
+	}
 	std::ifstream input_file(n["skin"].as<std::string>());
 	auto *m = mesh.get();
 	m->bone_weights.clear();
@@ -675,12 +686,6 @@ parse_skinrender(skinrender *sr, YAML::Node n)
 	}
 	assert(m->bone_weights.size() == m->vertices.size());
 	sr->set_mesh(mesh);
-	sr->set_material(mat);
-	if (n["shadowcaster"]) {
-		auto path = n["shadowcaster"].as<std::string>();
-		auto m = load_material(path, true);
-		sr->set_shadowcaster(m);
-	}
 }
 
 static void

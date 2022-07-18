@@ -15,7 +15,7 @@ scene_camera::scene_camera(gameobject *go) : camera(go)
 void
 scene_camera::render()
 {
-	level::cull(this, draw_list);
+	level::cull(this, draw_list, render_pass::FORWARD);
 	RENDER_SYSTEM.set_camera(this);
 	if (show_skeleton_) {
 		for (auto &d:draw_list) {

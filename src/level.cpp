@@ -76,60 +76,23 @@ level::load(const std::string &path)
 }
 
 void
-level::cull_shadowcaster(camera *cam, std::vector<draw_object> &list)
+level::cull(camera *cam, std::vector<draw_object> &list, render_pass::path path)
 {
 	for (auto &lv:levels) {
 		for (auto &iter:lv->gobjects) {
 			auto *go = iter.second;
 			auto mf = (meshfilter *)go->get_component("meshfilter");
 			auto mr = (meshrender *)go->get_component("meshrender");
-			auto sr = (skinrender *)go->get_component("skillrender");
+			auto sr = (skinrender *)go->get_component("skinrender");
 			if ((mf == nullptr || mr == nullptr) && sr == nullptr)
 				continue;
 			render::mesh *mesh;
 			render::material *material;
 			if (sr != nullptr) {
-				mesh = sr->get_mesh();
-				material = sr->get_shadowcaster();
+				material = sr->get_material(path);
 				if (material == nullptr)
 					continue;
-				auto *ani = (animator *)go->get_component("animator");
-				if (ani) {
-					auto &pose = ani->get_current_pose();
-					list.emplace_back(go->transform, mesh, material, pose);
-				} else {
-					list.emplace_back(go->transform, mesh, material);
-				}
-			} else {
-				mesh = mf->get_mesh();
-				material = mr->get_shadowcaster();
-				if (material != nullptr)
-				list.emplace_back(go->transform, mesh, material);
-			}
-		#if IS_EDITOR
-			list.back().go = go;
-		#endif
-		}
-	}
-
-}
-
-void
-level::cull(camera *cam, std::vector<draw_object> &list)
-{
-	for (auto &lv:levels) {
-		for (auto &iter:lv->gobjects) {
-			auto *go = iter.second;
-			auto mf = (meshfilter *)go->get_component("meshfilter");
-			auto mr = (meshrender *)go->get_component("meshrender");
-			auto sr = (skinrender *)go->get_component("skillrender");
-			if ((mf == nullptr || mr == nullptr) && sr == nullptr)
-				continue;
-			render::mesh *mesh;
-			render::material *material;
-			if (sr != nullptr) {
 				mesh = sr->get_mesh();
-				material = sr->get_material();
 				auto *ani = (animator *)go->get_component("animator");
 				if (ani) {
 					auto &pose = ani->get_current_pose();
@@ -138,8 +101,10 @@ level::cull(camera *cam, std::vector<draw_object> &list)
 					list.emplace_back(go->transform, mesh, material);
 				}
 			} else {
+				material = mr->get_material(path);
+				if (material == nullptr)
+					continue;
 				mesh = mf->get_mesh();
-				material = mr->get_material();
 				list.emplace_back(go->transform, mesh, material);
 			}
 		#if IS_EDITOR

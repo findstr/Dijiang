@@ -195,7 +195,7 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest)
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
 	printf("create pipeline begin\n");
-	if (vkCreateGraphicsPipelines(VK_CTX.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines(VK_CTX.device, VK_CTX.pipeline_cache, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		return nullptr;
 	printf("create pipeline end\n");
 	return new vk_pipeline(pipeline, pipelinelayout);

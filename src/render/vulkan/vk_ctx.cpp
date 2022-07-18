@@ -16,6 +16,8 @@
 #include "vk_native.h"
 #include "vk_surface.h"
 #include "vk_texture.h"
+#include "vk_forward_pass.h"
+#include "vk_shadow_pass.h"
 #include "vk_ctx.h"
 
 namespace engine {
@@ -606,17 +608,13 @@ vk_ctx_init_lighting()
 		{LIGHTING_ASSET.skybox_irradiance.get(), ENGINE_SKYBOX_IRRADIANCE_BINDING, ENGINE_SKYBOX_IRRADIANCE_SAMPLER_BINDING},
 	};
 	int count = sizeof(textures) / sizeof(textures[0]);
-	std::array<VkDescriptorImageInfo, sizeof(textures) / sizeof(textures[0]) + 1> imageInfo;
+	std::array<VkDescriptorImageInfo, sizeof(textures) / sizeof(textures[0])> imageInfo;
 	for (int i = 0; i < count; i++) {
 		imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo[i].imageView = native_of(textures[i].tex).view;
 		imageInfo[i].sampler = native_of(textures[i].tex).sampler(textures[i].tex);
 	}
-	imageInfo[count].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo[count].imageView = VK_FRAMEBUFFER.shadowmap();
-	imageInfo[count].sampler = imageInfo[0].sampler;
-	
-	std::array<VkWriteDescriptorSet, (sizeof(textures) / sizeof(textures[0]) + 1) * 2 * conf::MAX_FRAMES_IN_FLIGHT> descriptorWrite;
+	std::array<VkWriteDescriptorSet, (sizeof(textures) / sizeof(textures[0])) * 2 * conf::MAX_FRAMES_IN_FLIGHT> descriptorWrite;
 	int k = 0;
 	for (int i = 0; i < count; i++) {
 		for (int j = 0; j < conf::MAX_FRAMES_IN_FLIGHT; j++) {
@@ -640,27 +638,6 @@ vk_ctx_init_lighting()
 			descriptorWrite[k].pNext = VK_NULL_HANDLE;
 			++k;
 		}
-	}
-	for (int j = 0; j < conf::MAX_FRAMES_IN_FLIGHT; j++) {
-		descriptorWrite[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite[k].dstSet = VK_CTX.engine_desc_set[j];
-		descriptorWrite[k].dstBinding = ENGINE_SHADOWMAP_BINDING;
-		descriptorWrite[k].dstArrayElement = 0;
-		descriptorWrite[k].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		descriptorWrite[k].descriptorCount = 1;
-		descriptorWrite[k].pImageInfo = &imageInfo[count];
-		descriptorWrite[k].pNext = VK_NULL_HANDLE;
-		++k;
-
-		descriptorWrite[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite[k].dstSet = VK_CTX.engine_desc_set[j];
-		descriptorWrite[k].dstBinding = ENGINE_SHADOWMAP_SAMPLER_BINDING;
-		descriptorWrite[k].dstArrayElement = 0;
-		descriptorWrite[k].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-		descriptorWrite[k].descriptorCount = 1;
-		descriptorWrite[k].pImageInfo = &imageInfo[count];
-		descriptorWrite[k].pNext = VK_NULL_HANDLE;
-		++k;
 	}
 	vkUpdateDescriptorSets(VK_CTX.device,
 		static_cast<uint32_t>(descriptorWrite.size()),
@@ -693,130 +670,20 @@ find_depth_format()
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
-static VkRenderPass
-new_shadowmap_pass()
+VkPipelineCache
+create_pipeline_cache()
 {
-	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = VK_FORMAT_R32_SFLOAT;
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-	VkAttachmentReference colorAttachmentRef = {};
-	colorAttachmentRef.attachment = 0;
-	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-
-	VkAttachmentDescription depthAttachment{};
-	depthAttachment.format = VK_CTX.depth_format;
-	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depthAttachmentRef{};
-	depthAttachmentRef.attachment = 1;
-	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorAttachmentRef;
-	subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-	VkSubpassDependency dependency{};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;;
-	dependency.srcAccessMask = 0;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;;
-
-	std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment }; //Should keep order of renderframe
-
-	VkRenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	renderPassInfo.pAttachments = attachments.data();
-	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpass;
-	renderPassInfo.dependencyCount = 1;
-	renderPassInfo.pDependencies = &dependency;
-	
-	VkRenderPass renderpass;
-	auto ret = vkCreateRenderPass(VK_CTX.device, &renderPassInfo, nullptr, &renderpass);
-	assert(ret == VK_SUCCESS);
-	return renderpass;
-}
-
-static VkRenderPass
-new_renderpass()
-{
-	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = VK_CTX.swapchain.imageformat;
-	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	VkAttachmentReference colorAttachmentRef = {};
-	colorAttachmentRef.attachment = 0;
-	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-
-	VkAttachmentDescription depthAttachment{};
-	depthAttachment.format = VK_CTX.depth_format;
-	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depthAttachmentRef{};
-	depthAttachmentRef.attachment = 1;
-	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorAttachmentRef;
-	subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-	VkSubpassDependency dependency{};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;;
-	dependency.srcAccessMask = 0;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;;
-
-	std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment }; //Should keep order of renderframe
-
-	VkRenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-	renderPassInfo.pAttachments = attachments.data();
-	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpass;
-	renderPassInfo.dependencyCount = 1;
-	renderPassInfo.pDependencies = &dependency;
-	
-	VkRenderPass renderpass;
-	auto ret = vkCreateRenderPass(VK_CTX.device, &renderPassInfo, nullptr, &renderpass);
-	assert(ret == VK_SUCCESS);
-	return renderpass;
+	VkResult result;
+	VkPipelineCache pipeline_cache;
+	VkPipelineCacheCreateInfo pipelineCacheInfo;
+	pipelineCacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+	pipelineCacheInfo.pNext = NULL;
+	pipelineCacheInfo.initialDataSize = 0;
+	pipelineCacheInfo.pInitialData = NULL;
+	pipelineCacheInfo.flags         = 0;
+	result = vkCreatePipelineCache(VK_CTX.device, &pipelineCacheInfo, NULL, &pipeline_cache);
+	assert(result == VK_SUCCESS);
+	return pipeline_cache;
 }
 
 int
@@ -834,7 +701,7 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	CTX.swapchain = createSwapChain(&CTX, CTX.phydevice, CTX.device, ext.surface, width, height);
 	CTX.commandpool = createCommandPool(CTX.phydevice, CTX.device, ext.surface);
 	CTX.surface = ext.surface;
-
+	CTX.pipeline_cache = create_pipeline_cache();
 	VkResult result;
 	VkCommandBufferAllocateInfo cba = {};
 	cba.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -848,10 +715,11 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	}
 	create_engine_descriptor_set();
 	CTX.depth_format = find_depth_format();
-	CTX.render_pass = new_renderpass();
-	CTX.shadowmap_pass = new_shadowmap_pass();
 	std::cout << "The GPU has a minimum buffer alignment of " <<
 		CTX.properties.limits.minUniformBufferOffsetAlignment << std::endl;
+
+	RENDER_PASS.reg(render_pass::FORWARD, new vk_forward_pass());
+
 	return 0;
 }
 
@@ -887,7 +755,8 @@ void
 vk_ctx_cleanup()
 {
 	cleanupSwapchain(&CTX);
-	vkDestroyRenderPass(CTX.device, CTX.render_pass, nullptr);
+	delete RENDER_PASS.unreg(render_pass::FORWARD);
+	delete RENDER_PASS.unreg(render_pass::SHADOW);
 	vkDestroyCommandPool(CTX.device, CTX.commandpool, nullptr);
 	vkDestroyDevice(CTX.device, nullptr);
 	if (enableValidationLayers)

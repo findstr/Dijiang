@@ -5,6 +5,7 @@
 #include "components/light.h"
 #include "render/ubo.h"
 #ifdef USE_VULKAN
+#include "render/vulkan/vk_render_texture.h"
 #include "render/vulkan/vk_surface.h"
 #include "render/vulkan/vk_uniform.h"
 #include "render/vulkan/vk_shader_variables.h"
@@ -42,6 +43,9 @@ private:
 	vulkan::surface *surface = nullptr;
 	std::array<uint32_t, 3> ubo_offset;
 	VkViewport viewport;
+	VkRenderPass render_pass = VK_NULL_HANDLE;
+	VkFramebuffer frame_buffer = VK_NULL_HANDLE;
+	std::unique_ptr<render_texture> shadow_texture;
 	render::ubo::per_frame *ubo_per_frame = nullptr;
 	render::ubo::per_camera *ubo_per_camera = nullptr;
 	std::unique_ptr<vulkan::vk_uniform<render::ubo::per_frame, vulkan::ENGINE_PER_FRAME_BINDING>> uniform_per_frame;

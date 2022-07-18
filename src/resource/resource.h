@@ -21,7 +21,7 @@ std::shared_ptr<render::texture>	load_cubemap(
 	const std::array<std::string, render::cubemap::FACE_COUNT> &path);
 std::shared_ptr<render::texture>	load_cubemap(const std::string &path);
 std::shared_ptr<render::shader>		load_shader(const std::string &file);
-std::shared_ptr<render::material>	load_material(const std::string &file, bool shadowcaster = false);
+std::shared_ptr<render::material>	load_material(const std::string &file);
 std::shared_ptr<render::mesh>		load_mesh(const std::string &file);
 std::shared_ptr<animation::skeleton>	load_skeleton(const std::string &file);
 std::shared_ptr<animation::clip>	load_animation_clip(const std::string &file);

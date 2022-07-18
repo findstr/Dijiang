@@ -4,7 +4,6 @@
 #include "vk_buffer.h"
 #include "vk_shader.h"
 #include "vk_texture.h"
-#include "vk_pass.h"
 #include "vk_native.h"
 #include "vk_material.h"
 
@@ -13,10 +12,10 @@ namespace engine {
 
 namespace vulkan {
 
-vk_material::vk_material(std::shared_ptr<render::shader> &s, bool ztest, bool shadowcaster)
+vk_material::vk_material(render_pass::path path, std::shared_ptr<render::shader> &s, bool ztest)
 {
+	this->render_path_ = path;
 	this->ztest = ztest;
-	this->shadowcaster = shadowcaster;
 	set_shader(s);
 }
 
@@ -38,10 +37,16 @@ vk_material::set_shader(std::shared_ptr<render::shader> &s)
 			printf("====:%d\n", result);
 		assert(result == VK_SUCCESS);
 	}
-	if (shadowcaster) 
-		pipeline = std::unique_ptr<vk_pipeline>(vk_pipeline::create(VK_CTX.shadowmap_pass, (vk_shader *)shader.get(), ztest));
-	else
-		pipeline = std::unique_ptr<vk_pipeline>(vk_pipeline::create(VK_CTX.render_pass, (vk_shader *)shader.get(), ztest));
+}
+
+vk_pipeline &
+vk_material::pipeline(VkRenderPass pass)
+{
+	if (pipeline_ == nullptr || render_pass != pass) {
+		render_pass = pass;
+		pipeline_ = std::unique_ptr<vk_pipeline>(vk_pipeline::create(render_pass, (vk_shader *)shader.get(), ztest));
+	}
+	return *pipeline_;
 }
 
 void

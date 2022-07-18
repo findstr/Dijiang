@@ -11,8 +11,9 @@ namespace vulkan {
 void
 vk_texture2d::apply()
 {
+	auto usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	native.destroy();
-	native.create(this);
+	native.create(this, usage);
 	vk_buffer staging(vk_buffer::STAGING, pixel.size());
 	staging.upload(pixel.data(), pixel.size());
 	native.transition_layout(this, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -21,25 +22,5 @@ vk_texture2d::apply()
 }
 
 
-}
-
-namespace render {
-
-texture2d *
-texture2d::create(int width, int height,
-	texture_format format,
-	bool linear, int miplevels)
-{
-	texture2d *tex = new vulkan::vk_texture2d();
-	tex->width_ = width;
-	tex->height_ = height;
-	tex->format = format;
-	tex->linear = linear;
-	tex->miplevels = miplevels;
-	return tex;
-}
-
-}
-
-}
+}}
 

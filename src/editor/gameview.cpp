@@ -1,6 +1,7 @@
 #include <array>
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "backends/imgui_impl_vulkan.h"
 #include "components/camera.h"
 #include "render/draw_object.h"
 #include "system/render_system.h"
@@ -13,7 +14,13 @@ namespace editor {
 
 gameview::gameview() :
 	title("Game")
-{}
+{
+	render_texture.reset(render_texture::create(
+		1024, 768, texture_format::RGBA32, texture_format::D32S8, false, 1));
+	texture_id = ImGui_ImplVulkan_AddTexture((VkSampler)render_texture->sampler(), 
+		(VkImageView) render_texture->handle(), 
+		VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
+}
 
 void
 gameview::tick(engine *e, float delta)
@@ -47,6 +54,7 @@ gameview::tick(engine *e, float delta)
 #endif
 	if (ImGui::IsWindowFocused()) 
 		input::update(delta);
+	vulkan::VK_FRAMEBUFFER.set_render_texture(render_texture.get());
 	auto cameras = camera::all_cameras();
 	for (auto cam:cameras) {
 		camera tmp = *cam;
@@ -58,6 +66,8 @@ gameview::tick(engine *e, float delta)
 		tmp.viewport.height = y_norm * cam->viewport.height;
 		tmp.render();
 	}
+	ImGui::Image(texture_id, ImVec2(render_texture->width(), render_texture->height()));
+	vulkan::VK_FRAMEBUFFER.set_render_texture(nullptr);
 	ImGui::End();
 }
 

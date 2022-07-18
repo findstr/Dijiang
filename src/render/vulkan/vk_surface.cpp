@@ -5,6 +5,8 @@
 #include "conf.h"
 #include "imgui.h"
 #include "vk_ctx.h"
+#include "vk_native.h"
+#include "render_pass.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
 #include "vk_input.h"
@@ -15,6 +17,7 @@ namespace vulkan {
 
 struct surface {
 	GLFWwindow *window = nullptr;
+	VkRenderPass render_pass;
 };
 
 std::vector<const char *>
@@ -73,7 +76,6 @@ window_content_scale_callback(GLFWwindow *window, float x_scale, float y_scale)
 {
 	window_content_scale_update(fmaxf(x_scale, y_scale));
 }
-
 
 void imgui_set_default_style()
 {
@@ -183,11 +185,14 @@ fonts_upload(surface *s)
 static void 
 imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
 {
+
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO&    io    = ImGui::GetIO();
 	ImGuiStyle& style = ImGui::GetStyle();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	io.ConfigDockingAlwaysTabBar         = true;
 	io.ConfigWindowsMoveFromTitleBarOnly = true;
 
@@ -220,7 +225,9 @@ imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
 	init_info.MinImageCount = conf::MAX_FRAMES_IN_FLIGHT;
 	init_info.ImageCount    = conf::MAX_FRAMES_IN_FLIGHT;
 	
-	ImGui_ImplVulkan_Init(&init_info, VK_CTX.render_pass);
+	s->render_pass = ((vk_render_pass *)RENDER_PASS.get(render_pass::FORWARD))->handle();
+
+	ImGui_ImplVulkan_Init(&init_info, s->render_pass);
 
 	// fonts upload
 	fonts_upload(s);
@@ -299,9 +306,30 @@ int
 surface_post_tick(struct surface *s) 
 {
         // Rendering
-	ImGui::EndFrame();
-	//ImGui::Render();
-	//ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), VK_CTX.cmdbuf);
+	auto &cmdbuf = VK_CTX.cmdbuf;
+	VkFramebuffer framebuffer = vulkan::VK_FRAMEBUFFER.current();
+	VkRenderPassBeginInfo renderPassInfo{};
+	std::array<VkClearValue, 2> clearColor{};
+	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
+	clearColor[1].depthStencil = { 1.0f, 0 };
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = s->render_pass;
+	renderPassInfo.framebuffer = framebuffer;
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent.width = vulkan::VK_CTX.swapchain.extent.width;
+	renderPassInfo.renderArea.extent.height = vulkan::VK_CTX.swapchain.extent.height;
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
+	renderPassInfo.pClearValues = clearColor.data();
+	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	ImGui::Render();
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), VK_CTX.cmdbuf);
+
+	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
+/*
+	ImGui::UpdatePlatformWindows();
+	ImGui::RenderPlatformWindowsDefault();
+*/
 	return 0;
 }
 

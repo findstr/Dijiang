@@ -1,3 +1,6 @@
+#include "render_pass.h"
+#include "render_texture.h"
+#include "vk_native.h"
 #include "vk_framebuffer.h"
 
 namespace engine {
@@ -36,107 +39,13 @@ vk_framebuffer::destroy_semaphores()
 void
 vk_framebuffer::init_depth_textures()
 {
-	auto &depth = depth_texture;
-	VkImageCreateInfo imageInfo{};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = static_cast<uint32_t>(VK_CTX.swapchain.extent.width);
-	imageInfo.extent.height = static_cast<uint32_t>(VK_CTX.swapchain.extent.height);
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = VK_CTX.depth_format;
-	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.flags = 0;
-
-	VmaAllocationCreateInfo vaci = {};
-	vaci.usage = VMA_MEMORY_USAGE_AUTO;
-	vaci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-	vaci.priority = 1.0f;
-
-	auto ret = vmaCreateImage(VK_CTX.allocator, &imageInfo, &vaci, &depth.image, &depth.allocation, nullptr);
-	assert(ret == VK_SUCCESS);
-
-	VkImageViewCreateInfo createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	createInfo.image = depth.image;
-	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	createInfo.format = VK_CTX.depth_format;
-	createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	createInfo.subresourceRange.baseMipLevel = 0;
-	createInfo.subresourceRange.levelCount = 1;
-	createInfo.subresourceRange.baseArrayLayer = 0;
-	createInfo.subresourceRange.layerCount = 1;
-	ret = vkCreateImageView(VK_CTX.device, &createInfo, nullptr, &depth.view);
-	assert(ret == VK_SUCCESS);
-}
-
-void
-vk_framebuffer::init_shadowmap_textures()
-{
-	auto &shadowmap = shadowmap_texture;
-	VkImageCreateInfo imageInfo{};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = static_cast<uint32_t>(VK_CTX.swapchain.extent.width);
-	imageInfo.extent.height = static_cast<uint32_t>(VK_CTX.swapchain.extent.height);
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = VK_FORMAT_R32_SFLOAT;
-	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.flags = 0;
-
-	VmaAllocationCreateInfo vaci = {};
-	vaci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-	vaci.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-	vaci.priority = 1.0f;
-
-	auto ret = vmaCreateImage(VK_CTX.allocator, &imageInfo, &vaci, &shadowmap.image, &shadowmap.allocation, nullptr);
-	assert(ret == VK_SUCCESS);
-
-	VkImageViewCreateInfo createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	createInfo.image = shadowmap.image;
-	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	createInfo.format = VK_FORMAT_R32_SFLOAT;
-	createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	createInfo.subresourceRange.baseMipLevel = 0;
-	createInfo.subresourceRange.levelCount = 1;
-	createInfo.subresourceRange.baseArrayLayer = 0;
-	createInfo.subresourceRange.layerCount = 1;
-	ret = vkCreateImageView(VK_CTX.device, &createInfo, nullptr, &shadowmap.view);
-	assert(ret == VK_SUCCESS);
-}
-
-void
-vk_framebuffer::destroy_shadowmap_textures()
-{
-	vkDestroyImageView(VK_CTX.device, shadowmap_texture.view, nullptr);
-	vmaDestroyImage(VK_CTX.allocator, shadowmap_texture.image, shadowmap_texture.allocation);
+	depth_texture.reset(new vk_depth_buffer(VK_CTX.swapchain.extent.width, VK_CTX.swapchain.extent.height, texture_format::D32));
 }
 
 void
 vk_framebuffer::destroy_depth_textures()
 {
-	vkDestroyImageView(VK_CTX.device, depth_texture.view, nullptr);
-	vmaDestroyImage(VK_CTX.allocator, depth_texture.image, depth_texture.allocation);
+	depth_texture.reset(nullptr);
 }
 
 void
@@ -146,12 +55,12 @@ vk_framebuffer::init_frame_buffers()
 	for (size_t i = 0; i < frame_buffers.size(); i++) {
 		std::array<VkImageView, 2> attachments = {
 			VK_CTX.swapchain.imageviews[i],
-			depth_texture.view,
+			depth_texture->native.view,
 		};
 
 		VkFramebufferCreateInfo framebuffInfo = {};
 		framebuffInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebuffInfo.renderPass = VK_CTX.render_pass; //指定Framebuffer需要兼容的renderPass,并不定是这个Renderpass会使用这个Framebuffer
+		framebuffInfo.renderPass = native_of(RENDER_PASS.get(render_pass::FORWARD)).handle(); //指定Framebuffer需要兼容的renderPass,并不定是这个Renderpass会使用这个Framebuffer
 		framebuffInfo.attachmentCount = attachments.size();
 		framebuffInfo.pAttachments = attachments.data();
 		framebuffInfo.width = VK_CTX.swapchain.extent.width;
@@ -160,29 +69,11 @@ vk_framebuffer::init_frame_buffers()
 		auto ret = vkCreateFramebuffer(VK_CTX.device, &framebuffInfo, nullptr, &frame_buffers[i]);
 		assert(ret == VK_SUCCESS);
 	}
-	std::array<VkImageView, 2> attachments = {
-		shadowmap_texture.view,
-		depth_texture.view,
-	};
-	VkFramebufferCreateInfo framebuffInfo = {};
-	framebuffInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	framebuffInfo.renderPass = VK_CTX.shadowmap_pass; //指定Framebuffer需要兼容的renderPass,并不定是这个Renderpass会使用这个Framebuffer
-	framebuffInfo.attachmentCount = attachments.size();
-	framebuffInfo.pAttachments = attachments.data();
-	framebuffInfo.width = VK_CTX.swapchain.extent.width;
-	framebuffInfo.height = VK_CTX.swapchain.extent.height;
-	framebuffInfo.layers = 1;
-	auto ret = vkCreateFramebuffer(VK_CTX.device, &framebuffInfo, nullptr, &shadowmap_frame);
-	assert(ret == VK_SUCCESS);
-
-
 }
 
 void
 vk_framebuffer::destroy_frame_buffers()
 {
-	if (shadowmap_frame != VK_NULL_HANDLE) 
-		vkDestroyFramebuffer(VK_CTX.device, shadowmap_frame, nullptr);
 	for (size_t i = 0; i < frame_buffers.size(); i++) {
 		vkDestroyFramebuffer(VK_CTX.device, frame_buffers[i], nullptr);
 		frame_buffers[i] = VK_NULL_HANDLE;
@@ -194,8 +85,6 @@ vk_framebuffer::resize()
 {
 	destroy_frame_buffers();
 	destroy_depth_textures();
-	destroy_shadowmap_textures();
-	init_shadowmap_textures();
 	init_depth_textures();
 	init_frame_buffers();
 }
@@ -204,7 +93,6 @@ vk_framebuffer::resize()
 vk_framebuffer::vk_framebuffer()
 {
 	init_semaphores();
-	init_shadowmap_textures();
 	init_depth_textures();
 	init_frame_buffers();
 }
@@ -213,7 +101,6 @@ vk_framebuffer::~vk_framebuffer()
 {
 	destroy_frame_buffers();
 	destroy_depth_textures();
-	destroy_shadowmap_textures();
 	destroy_semaphores();
 }
 
@@ -235,6 +122,12 @@ vk_framebuffer::acquire()
 		return acquire_result::NOT_READY;
 	} 
 	return acquire_result::SUCCESS;
+}
+	
+void
+vk_framebuffer::set_render_texture(render_texture *rt)
+{
+	this->rendertexture = rt;
 }
 
 int
@@ -279,22 +172,11 @@ vk_framebuffer::submit(VkCommandBuffer cmdbuf)
 VkFramebuffer
 vk_framebuffer::current() const
 {
-	return current_framebuffer;
+	if (rendertexture != nullptr)
+		return ((vk_render_texture *)rendertexture)->framebuffer();
+	else
+		return frame_buffers[image_index];
 }
-
-		
-void
-vk_framebuffer::switch_shadow_target()
-{
-	current_framebuffer = shadowmap_frame;
-}
-
-void
-vk_framebuffer::switch_render_target()
-{
-	current_framebuffer = frame_buffers[image_index];
-}
-
 
 }}
 

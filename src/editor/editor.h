@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include "menu.h"
 #include "engine.h"
 #include "hierarchy.h"
@@ -21,8 +22,8 @@ private:
 private:
 	engine *engine;
 	hierarchy hierarchy;
-	gameview gameview;
-	sceneview sceneview;
+	std::unique_ptr<gameview> gameview;
+	std::unique_ptr<sceneview> sceneview;
 	inspector *inspector = nullptr;
 	bool is_inspector_open = true;
 	bool m_editor_menu_window_open       = true;

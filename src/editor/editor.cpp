@@ -13,6 +13,8 @@ void
 editor::init(::engine::engine *e)
 {
 	this->engine = e;
+	this->gameview.reset(new ::engine::editor::gameview());
+	this->sceneview.reset(new ::engine::editor::sceneview());
 }
 
 void
@@ -24,7 +26,7 @@ editor::cleanup()
 void
 editor::pre_tick(float delta)
 {
-	sceneview.pre_tick(engine, delta);
+	sceneview->pre_tick(engine, delta);
 }
 
 void
@@ -68,8 +70,8 @@ editor::draw_menu()
 	    ImGui::DockBuilderDockWindow(hierarchy.title.c_str(), left_asset);
 	    ImGui::DockBuilderDockWindow("Inspector", right);
 	    ImGui::DockBuilderDockWindow("File Content", left_file_content);
-	    ImGui::DockBuilderDockWindow(gameview.title.c_str(), left_game_engine);
-	    ImGui::DockBuilderDockWindow(sceneview.title.c_str(), left_game_engine);
+	    ImGui::DockBuilderDockWindow(gameview->title.c_str(), left_game_engine);
+	    ImGui::DockBuilderDockWindow(sceneview->title.c_str(), left_game_engine);
 
 	    ImGui::DockBuilderFinish(main_docking_id);
 	}
@@ -94,8 +96,8 @@ editor::draw_menu()
 	    if (ImGui::BeginMenu("Window"))
 	    {
 		ImGui::MenuItem("World Objects", nullptr, &m_asset_window_open);
-		ImGui::MenuItem(gameview.title.c_str(), nullptr, &gameview.is_open);
-		ImGui::MenuItem(sceneview.title.c_str(), nullptr, &sceneview.is_open);
+		ImGui::MenuItem(gameview->title.c_str(), nullptr, &gameview->is_open);
+		ImGui::MenuItem(sceneview->title.c_str(), nullptr, &sceneview->is_open);
 		ImGui::MenuItem("File Content", nullptr, &m_file_content_window_open);
 		ImGui::MenuItem("Detail", nullptr, &m_detail_window_open);
 		ImGui::EndMenu();
@@ -126,9 +128,13 @@ editor::tick(float delta)
 	auto insp = hierarchy.tick(engine, delta);
 	if (insp != nullptr)
 		inspector = insp;
-	gameview.tick(engine, delta);
-	//sceneview.tick(engine, delta);
+	gameview->tick(engine, delta);
+//	sceneview.tick(engine, delta);
 	draw_inspector(inspector);
+	bool show_demo_window = true;
+	bool show_another_window = true;            
+	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+	ImGui::ShowDemoWindow(&show_demo_window);
 }
 
 void

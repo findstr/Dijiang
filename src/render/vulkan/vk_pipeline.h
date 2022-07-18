@@ -1,7 +1,6 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include "vk_shader.h"
-#include "vk_pass.h"
 
 namespace engine {
 namespace vulkan {

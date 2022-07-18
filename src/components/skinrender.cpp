@@ -4,41 +4,17 @@ namespace engine {
 
 skinrender::skinrender(
 	gameobject *go,
-	const std::shared_ptr<render::material> &mat,
-	const std::shared_ptr<render::mesh> &m):
-	component(go), material(mat), skinned_mesh(m)
+	std::shared_ptr<render::material> &mat,
+	std::shared_ptr<render::mesh> &m):
+	meshrender(go, mat), skinned_mesh(m)
 {
 	
-}
-
-render::material *
-skinrender::get_material()
-{
-	return material.get();
-}
-
-render::material *
-skinrender::get_shadowcaster()
-{
-	return shadowcaster.get();
 }
 
 render::mesh *
 skinrender::get_mesh() 
 {
 	return skinned_mesh.get();
-}
-
-void
-skinrender::set_material(std::shared_ptr<render::material> &mat)
-{
-	material = mat;
-}
-
-void
-skinrender::set_shadowcaster(std::shared_ptr<render::material> &mat)
-{
-	shadowcaster = mat;
 }
 
 void 

@@ -59,8 +59,9 @@ importer['MeshComponent'] = function(path)
 	print(4, "- meshrender:")
 	local mat = mesh.sub_meshes[1].material
 	local x = mat:match("(%w+).material.json$")
-	print(5,	"material: asset/material/"..x..".mat")
-	print(5,	"shadowcaster: asset/material/shadowcaster.mat")
+	print(5,	"material:")
+	print(6,		"- asset/material/"..x..".mat")
+	print(6,		"- asset/material/shadowcaster.mat")
 end
 
 importer['MotorComponent'] = function(path)
@@ -153,8 +154,9 @@ print(6,                "z:", 1)
 print(4,        "- skinrender:")
 print(5,			"mesh: asset/models/robot.obj")
 print(5,			"skin: asset/models/robot.skin")
-print(5,            "material: asset/material/robot.mat")
-print(5,			"shadowcaster: asset/material/shadowcaster.mat")
+print(5,            "material:")
+print(6,				"- asset/material/robot.mat")
+print(6,				"- asset/material/skeletonshadowcaster.mat")
 print(4,        "- animator:")
 print(5,			"skeleton:", "asset/skeleton/avatar.skeleton")
 

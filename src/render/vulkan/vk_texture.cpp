@@ -35,7 +35,7 @@ vk_texture::destroy()
 }
 
 VkSampler
-vk_texture::sampler(const render::texture *tex)
+vk_texture::sampler(const render::texture *tex) const
 {
 	if (sampler_ != VK_NULL_HANDLE)
 		return sampler_;
@@ -72,7 +72,7 @@ vk_texture::sampler(const render::texture *tex)
 
 
 void
-vk_texture::create(const render::texture *tex, int layer_count)
+vk_texture::create(const render::texture *tex, VkImageUsageFlags usage, int layer_count)
 {
 	destroy();
 	vk_format format(tex->format, tex->linear);
@@ -91,7 +91,7 @@ vk_texture::create(const render::texture *tex, int layer_count)
 	imageInfo.format = format,
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+	imageInfo.usage = usage;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 
@@ -114,7 +114,7 @@ vk_texture::create(const render::texture *tex, int layer_count)
 	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+	createInfo.subresourceRange.aspectMask = format.aspect(),
 	createInfo.subresourceRange.baseMipLevel = 0;
 	createInfo.subresourceRange.levelCount = tex->miplevels;
 	createInfo.subresourceRange.baseArrayLayer = 0;
@@ -122,12 +122,6 @@ vk_texture::create(const render::texture *tex, int layer_count)
 	ret = vkCreateImageView(VK_CTX.device, &createInfo, nullptr, &view);
 	assert(ret == VK_SUCCESS);
 	printf("create vk_texture:%p:%d\n", view, ret);
-}
-
-
-bool hasStencilComponent(VkFormat format)
-{
-	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
 void
@@ -150,13 +144,7 @@ vk_texture::transition_layout(
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.image = image;
-	if (to == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-		if (hasStencilComponent(format))
-			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-	} else {
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	}
+	barrier.subresourceRange.aspectMask = format.aspect();
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = tex->miplevels;
 	barrier.subresourceRange.baseArrayLayer = 0;

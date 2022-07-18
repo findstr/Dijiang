@@ -74,8 +74,9 @@ root:
                 - skinrender:
                     mesh: asset/models/robot.obj
                     skin: asset/models/robot.skin
-                    material: asset/material/robot.mat
-                    shadowcaster: asset/material/skeletonshadowcaster.mat
+                    material:
+                        - asset/material/robot.mat
+                        - asset/material/skeletonshadowcaster.mat
                 - animator:
                     skeleton: asset/skeleton/avatar.skeleton
     - gameobject:
@@ -100,8 +101,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +5
         parent: +0
@@ -124,8 +126,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +6
         parent: +0
@@ -148,8 +151,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +7
         parent: +0
@@ -172,8 +176,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +8
         parent: +0
@@ -196,8 +201,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +9
         parent: +0
@@ -220,8 +226,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +10
         parent: +0
@@ -244,8 +251,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +11
         parent: +0
@@ -268,8 +276,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +12
         parent: +0
@@ -292,8 +301,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +13
         parent: +0
@@ -316,8 +326,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +14
         parent: +0
@@ -340,8 +351,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +15
         parent: +0
@@ -364,8 +376,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +16
         parent: +0
@@ -388,8 +401,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +17
         parent: +0
@@ -412,8 +426,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +18
         parent: +0
@@ -436,8 +451,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +19
         parent: +0
@@ -460,8 +476,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +20
         parent: +0
@@ -484,8 +501,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +21
         parent: +0
@@ -508,8 +526,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall_with_door.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +22
         parent: +0
@@ -532,8 +551,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall_with_door.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +23
         parent: +0
@@ -556,8 +576,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall_with_door.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +24
         parent: +0
@@ -580,8 +601,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall_with_door.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +25
         parent: +0
@@ -604,8 +626,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall_with_door.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +26
         parent: +0
@@ -628,8 +651,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall_with_window.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +27
         parent: +0
@@ -652,8 +676,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall_with_window.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +28
         parent: +0
@@ -676,8 +701,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall_block.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +29
         parent: +0
@@ -700,8 +726,9 @@ root:
                     - submesh:
                         mesh: asset/models/wall_block.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +30
         parent: +0
@@ -724,8 +751,9 @@ root:
                     - submesh:
                         mesh: asset/models/stairs.obj
                 - meshrender:
-                    material: asset/material/gold.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/gold.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +31
         parent: +0
@@ -748,8 +776,9 @@ root:
                     - submesh:
                         mesh: asset/models/floor.obj
                 - meshrender:
-                    material: asset/material/white.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/white.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +32
         parent: +0
@@ -772,8 +801,9 @@ root:
                     - submesh:
                         mesh: asset/models/fence.obj
                 - meshrender:
-                    material: asset/material/silver.mat
-                    shadowcaster: asset/material/shadowcaster.mat
+                    material:
+                        - asset/material/silver.mat
+                        - asset/material/shadowcaster.mat
     - gameobject:
         id: +33
         parent: +0

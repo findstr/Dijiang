@@ -13,9 +13,9 @@ namespace vulkan {
 void
 vk_cubemap::apply()
 {
-
+	auto usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	native.destroy();
-	native.create(this, FACE_COUNT);
+	native.create(this, usage, FACE_COUNT);
 	auto tex_size = width_ * height_ * format.size();
 	auto cube_size = FACE_COUNT * tex_size;
 	vk_buffer staging(vk_buffer::STAGING, cube_size);

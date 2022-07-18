@@ -1,7 +1,9 @@
 #include "system/render_system.h"
 #include "level.h"
+#include "render_pass.h"
 #ifdef USE_VULKAN
 #include "render/vulkan/vk_ctx.h"
+#include "render/vulkan/vk_native.h"
 #include "render/vulkan/vk_surface.h"
 #include "render/vulkan/vk_framebuffer.h"
 #include "render/vulkan/vk_mesh.h"
@@ -124,54 +126,86 @@ render_system::frame_begin(float delta)
 void 
 render_system::renderpass_begin(bool clear)
 {
-	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
-	vulkan::VK_FRAMEBUFFER.switch_render_target();
-	VkRenderPassBeginInfo renderPassInfo{};
-	std::array<VkClearValue, 2> clearColor{};
-	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
-	clearColor[1].depthStencil = { 1.0f, 0 };
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = vulkan::VK_CTX.render_pass;
-	renderPassInfo.framebuffer = vulkan::VK_FRAMEBUFFER.current();
-	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = vulkan::VK_CTX.swapchain.extent;
-	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
-	renderPassInfo.pClearValues = clearColor.data();
-	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	RENDER_PASS.begin(render_pass::FORWARD, 1, 1);
+	render_pass = vulkan::native_of(RENDER_PASS.get(render_pass::FORWARD)).handle();
+	frame_buffer = vulkan::VK_FRAMEBUFFER.current();
 }
 
 void
 render_system::renderpass_end()
 {
-	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
-	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
+	RENDER_PASS.end(render_pass::FORWARD);
 }
-
 	
 void
 render_system::shadowpass_begin()
 {
+	if (shadow_texture == nullptr) {
+		shadow_texture.reset(render_texture::create(
+			vulkan::VK_CTX.swapchain.extent.width,
+			vulkan::VK_CTX.swapchain.extent.height,
+			texture_format::R32, texture_format::D32, true));
+
+		auto *st = (vulkan::vk_render_texture *)(shadow_texture.get());
+
+		std::array<VkDescriptorImageInfo, conf::MAX_FRAMES_IN_FLIGHT> imageInfo;
+		std::array<VkWriteDescriptorSet, conf::MAX_FRAMES_IN_FLIGHT * 2> desc_writes;
+		for (int i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
+			imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo[i].imageView = st->imageview(i);
+			imageInfo[i].sampler = st->sampler(i);
+			
+			desc_writes[i*2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			desc_writes[i*2].dstSet = vulkan::VK_CTX.engine_desc_set[i];
+			desc_writes[i*2].dstBinding = vulkan::ENGINE_SHADOWMAP_BINDING;
+			desc_writes[i*2].dstArrayElement = 0;
+			desc_writes[i*2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			desc_writes[i*2].descriptorCount = 1;
+			desc_writes[i*2].pImageInfo = &imageInfo[i];
+			desc_writes[i*2].pNext = VK_NULL_HANDLE;
+
+			desc_writes[i*2+1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			desc_writes[i*2+1].dstSet = vulkan::VK_CTX.engine_desc_set[i];
+			desc_writes[i*2+1].dstBinding = vulkan::ENGINE_SHADOWMAP_SAMPLER_BINDING;
+			desc_writes[i*2+1].dstArrayElement = 0;
+			desc_writes[i*2+1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+			desc_writes[i*2+1].descriptorCount = 1;
+			desc_writes[i*2+1].pImageInfo = &imageInfo[i];
+			desc_writes[i*2+1].pNext = VK_NULL_HANDLE;
+		}
+
+		vkUpdateDescriptorSets(vulkan::VK_CTX.device,
+			static_cast<uint32_t>(desc_writes.size()),
+			desc_writes.data(), 0, nullptr);
+	}
+	auto *st = (vulkan::vk_render_texture *)(shadow_texture.get());
+	/*
+	vulkan::VK_FRAMEBUFFER.switch_shadow_target();
+	RENDER_PASS.begin(render_pass::SHADOW, 1, 1);
+	render_pass = vulkan::native_of(RENDER_PASS.get(render_pass::SHADOW)).handle();
+	*/
 	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
 	VkRenderPassBeginInfo renderPassInfo{};
 	std::array<VkClearValue, 2> clearColor{};
-	vulkan::VK_FRAMEBUFFER.switch_shadow_target();
 	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
 	clearColor[1].depthStencil = { 1.0f, 0 };
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = vulkan::VK_CTX.shadowmap_pass;
-	renderPassInfo.framebuffer = vulkan::VK_FRAMEBUFFER.current();
+	renderPassInfo.renderPass = st->render_pass;
+	renderPassInfo.framebuffer = st->framebuffer();
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = vulkan::VK_CTX.swapchain.extent;
+	renderPassInfo.renderArea.extent.width = st->width();
+	renderPassInfo.renderArea.extent.height = st->height();
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
 	renderPassInfo.pClearValues = clearColor.data();
 	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	render_pass = st->render_pass;
 }
 
 void
 render_system::shadowpass_end()
 {
-	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
-	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
+	RENDER_PASS.end(render_pass::FORWARD);
 }
 	
 void 
@@ -261,7 +295,7 @@ render_system::draw(draw_object &draw)
 	mesh->flush();
 	update_uniformbuffer_per_object(ubo_per_camera, ubo, draw);
 	uniform_per_object->unmap();
-	vkCmdBindPipeline(vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline->handle);
+	vkCmdBindPipeline(vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline(render_pass).handle);
 #if IS_EDITOR
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
@@ -278,13 +312,13 @@ render_system::draw(draw_object &draw)
 	vkCmdBindIndexBuffer(vulkan::VK_CTX.cmdbuf, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindDescriptorSets(
 		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		mat->pipeline->layout,
+		mat->pipeline(render_pass).layout,
 		0,
 		1, &mat->desc_set[vulkan::VK_CTX.frame_index],
 		0, nullptr);
 	vkCmdBindDescriptorSets(
 		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		mat->pipeline->layout,
+		mat->pipeline(render_pass).layout,
 		1,
 		1, &vulkan::VK_CTX.engine_desc_set[vulkan::VK_CTX.frame_index],
 		ubo_offset.size(), ubo_offset.data());
