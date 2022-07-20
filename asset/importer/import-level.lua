@@ -215,5 +215,5 @@ print(4,        "- meshfilter:")
 print(5,            "- submesh:")
 print(6,                "mesh: asset/models/skybox.obj")
 print(4,        "- meshrender:")
-print(5,            "material: asset/material/skybox.mat")
-
+print(5,            "material:")
+print(6,				"- asset/material/skybox.mat")

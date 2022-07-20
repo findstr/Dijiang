@@ -826,4 +826,5 @@ root:
                     - submesh:
                         mesh: asset/models/skybox.obj
                 - meshrender:
-                    material: asset/material/skybox.mat
+                    material: 
+                        - asset/material/skybox.mat
