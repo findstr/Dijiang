@@ -48,7 +48,7 @@ camera::render()
 		RENDER_SYSTEM.draw(d);
 	}
 	RENDER_SYSTEM.shadowpass_end();
-	RENDER_SYSTEM.renderpass_begin();
+	RENDER_SYSTEM.renderpass_begin(render_target);
 	draw_list.clear();
 	RENDER_SYSTEM.set_camera(this);
 	level::cull(this, draw_list, render_pass::FORWARD);

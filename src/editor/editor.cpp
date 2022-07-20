@@ -129,12 +129,8 @@ editor::tick(float delta)
 	if (insp != nullptr)
 		inspector = insp;
 	gameview->tick(engine, delta);
-//	sceneview.tick(engine, delta);
+	sceneview->tick(engine, delta);
 	draw_inspector(inspector);
-	bool show_demo_window = true;
-	bool show_another_window = true;            
-	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-	ImGui::ShowDemoWindow(&show_demo_window);
 }
 
 void

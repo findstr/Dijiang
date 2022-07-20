@@ -41,7 +41,7 @@ scene_camera::render()
 		}
 	}
 	render::debugger::inst().cull(this, draw_list);
-	RENDER_SYSTEM.renderpass_begin();
+	RENDER_SYSTEM.renderpass_begin(render_target);
 	for (auto &d:draw_list)
 		RENDER_SYSTEM.draw(d);
 	draw_list.clear();

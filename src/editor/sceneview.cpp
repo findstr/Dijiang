@@ -4,6 +4,7 @@
 #include "level.h"
 #include "sceneview.h"
 #include "input.h"
+#include "backends/imgui_impl_vulkan.h"
 #include "system/render_system.h"
 #include "render/debugger.h"
 
@@ -22,6 +23,12 @@ sceneview::sceneview() :
 	camera->aspect = 1.0f;
 	camera->clip_far_plane = 100.0f;
 	camera->clip_near_plane = 0.1f;
+
+	render_texture.reset(render_texture::create(
+		1024, 768, texture_format::RGBA32, texture_format::D32S8, false, 1));
+	texture_id = ImGui_ImplVulkan_AddTexture((VkSampler)render_texture->sampler(), 
+		(VkImageView) render_texture->handle(), 
+		VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
 }
 
 void
@@ -37,35 +44,12 @@ sceneview::tick(engine *e, float delta)
 	if (!is_open)
 		return;
 	ImGui::Begin(title.c_str(), &is_open, window_flags);
-	auto menu_bar_rect = ImGui::GetCurrentWindow()->MenuBarRect();
-	ImVec2 window_pos = ImGui::GetWindowPos();
-	ImVec2 window_size = ImGui::GetWindowSize();
-	ImVec2 content_region = ImGui::GetWindowContentRegionMax();
-
 	ImGui::BeginMenuBar();
-
 	if (ImGui::BeginMenu("Gizoms")) {
 		ImGui::MenuItem("ShowSkeleton", "", &gizmos_show_skeleton);
                 ImGui::EndMenu();
 	}
 	ImGui::EndMenuBar();
-	std::array<int, 2> full_size = {1024, 768};
-	RENDER_SYSTEM.get_resolution(&full_size[0], &full_size[1]);
-
-
-	//window_pos.y += menu_bar_rect.Min.y;
-	//window_size.y -= menu_bar_rect.Min.y;
-	
-#if defined(__MACH__)
-	// The dpi_scale is not reactive to DPI changes or monitor switching, it might be a bug from ImGui.
-	// Return value from ImGui::GetMainViewport()->DpiScal is always the same as first frame.
-	// glfwGetMonitorContentScale and glfwSetWindowContentScaleCallback are more adaptive.
-	window_pos.x *= main_viewport->DpiScale;
-	window_pos.y *= main_viewport->DpiScale;
-	window_size.x *= main_viewport->DpiScale;
-	window_size.y *= main_viewport->DpiScale;
-
-#endif
 	vector2f mouse_new_pos = input::mouse_get_position();
 	if (ImGui::IsWindowFocused()) {
 		float mouse_delta = input::mouse_scroll_delta();
@@ -90,16 +74,12 @@ sceneview::tick(engine *e, float delta)
 			}
 		}
 	}
-
 	mouse_position = mouse_new_pos;
-	float x_norm = window_size.x / full_size[0];
-	float y_norm = window_size.y / full_size[1];
-	camera->viewport.x = window_pos.x / full_size[0];
-	camera->viewport.y = window_pos.y / full_size[1];
-	camera->viewport.width = x_norm;
-	camera->viewport.height = y_norm;
+	camera->render_target = render_texture.get();
 	camera->show_skeleton(gizmos_show_skeleton);
 	camera->render();
+	camera->render_target = nullptr;
+	ImGui::Image(texture_id, ImGui::GetContentRegionAvail());
 	ImGui::End();
 }
 

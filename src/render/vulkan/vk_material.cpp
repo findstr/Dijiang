@@ -42,11 +42,13 @@ vk_material::set_shader(std::shared_ptr<render::shader> &s)
 vk_pipeline &
 vk_material::pipeline(VkRenderPass pass)
 {
-	if (pipeline_ == nullptr || render_pass != pass) {
-		render_pass = pass;
-		pipeline_ = std::unique_ptr<vk_pipeline>(vk_pipeline::create(render_pass, (vk_shader *)shader.get(), ztest));
+	for (auto &iter:pipelines) {
+		if (iter.renderpass == pass)
+			return *iter.pipeline;
 	}
-	return *pipeline_;
+	auto pl = vk_pipeline::create(pass, (vk_shader *)shader.get(), ztest);
+	pipelines.emplace_back(pass, pl);
+	return *pl;
 }
 
 void

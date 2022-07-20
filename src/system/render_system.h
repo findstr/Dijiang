@@ -20,7 +20,7 @@ public:
 	~render_system();
 	void init_lighting();
 	int frame_begin(float delta);
-	void renderpass_begin(bool clear = true);
+	void renderpass_begin(render_texture *rt);
 	void renderpass_end();
 	void shadowpass_begin();
 	void shadowpass_end();
@@ -43,8 +43,6 @@ private:
 	vulkan::surface *surface = nullptr;
 	std::array<uint32_t, 3> ubo_offset;
 	VkViewport viewport;
-	VkRenderPass render_pass = VK_NULL_HANDLE;
-	VkFramebuffer frame_buffer = VK_NULL_HANDLE;
 	std::unique_ptr<render_texture> shadow_texture;
 	render::ubo::per_frame *ubo_per_frame = nullptr;
 	render::ubo::per_camera *ubo_per_camera = nullptr;

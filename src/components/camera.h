@@ -5,6 +5,7 @@
 #include "draw_object.h"
 #include "gameobject.h"
 #include "component.h"
+#include "render/render_texture.h"
 
 namespace engine {
 
@@ -28,9 +29,10 @@ public:
 	float aspect = 16.0f/9.9f;
 	float clip_near_plane = 1.f;
 	float clip_far_plane = 100.f;
-	bool perspective = false;
+	bool perspective = true;
 	float orthographic_size = 5.0f;
 	rect viewport = rect(0.f, 0.f, 1.f, 1.f);
+	render_texture *render_target = nullptr;
 protected:
 	bool regged = false;
 	std::vector<draw_object> draw_list;

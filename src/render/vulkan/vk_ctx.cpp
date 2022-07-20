@@ -8,7 +8,6 @@
 #include <vulkan/vulkan.hpp>
 #include "render/lighting_asset.h"
 #include "../../asset/shaders/include/engine_constant.inc.hlsl"
-#include "vk_framebuffer.h"
 #include "vk_mem_alloc.h"
 #include "vk_shader_variables.h"
 
@@ -16,14 +15,14 @@
 #include "vk_native.h"
 #include "vk_surface.h"
 #include "vk_texture.h"
-#include "vk_forward_pass.h"
-#include "vk_shadow_pass.h"
+#include "vk_render_texture.h"
 #include "vk_ctx.h"
+#include <math/math.h>
 
 namespace engine {
 namespace vulkan {
 
-const vk_ctx VK_CTX = {};
+struct vk_ctx VK_CTX = {};
 
 #define CTX (*(vk_ctx *)&VK_CTX)
 
@@ -41,12 +40,6 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
-
-struct QueueFamilyIndices {
-	int graphicsFamily = -1;
-	int presentFamily = -1;
-	bool isComplete() { return graphicsFamily >= 0 && presentFamily >= 0; }
-};
 
 struct SwapChainSupportDetails {
 	VkSurfaceCapabilitiesKHR capabilities;
@@ -190,29 +183,8 @@ checkDeviceExtensionSupport(VkPhysicalDevice device)
 	return requiredExtensions.empty();
 }
 
-static SwapChainSupportDetails
-querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
-{
-	uint32_t formatCount;
-	uint32_t presentModeCount;
-	SwapChainSupportDetails details;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
-	if (formatCount != 0) {
-		details.formats.resize(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
-	}
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-	if (presentModeCount != 0) {
-		details.presentModes.resize(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
-	}
-	return details;
-}
-
-static QueueFamilyIndices
-findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
-	QueueFamilyIndices indices;
+static void  
+find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface, int *graphic, int *present) {
 	uint32_t count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &count, nullptr);
 	std::vector<VkQueueFamilyProperties> queueFamilies(count);
@@ -222,17 +194,18 @@ findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
 		if (qf.queueCount > 0) {
 			VkBool32 presentSupport = false;
 			if (qf.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-				indices.graphicsFamily = i;
+				*graphic = i;
 			}
 			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 			if (presentSupport)
-				indices.presentFamily = i;
+				*present = i;
 		}
-		if (indices.isComplete())
+		if (*graphic >= 0 && *present >= 0)
 			break;
 		++i;
 	}
-	return indices;
+	assert(*graphic >= 0 && *present >= 0);
+	return ;
 }
 
 
@@ -240,16 +213,16 @@ findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
 static bool
 isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
-	auto qf = findQueueFamilies(device, surface);
+	find_queue_families(device, surface, &VK_CTX.graphicsfamily, &VK_CTX.presentfamily);
 	auto extSupport = checkDeviceExtensionSupport(device);
 	bool swapChainAdequate = false;
 	if (extSupport) {
-		auto swapChainSupport = querySwapChainSupport(device, surface);
+		auto swapChainSupport = vk_swapchain::query_support(device, surface);
 		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
 	}
 	VkPhysicalDeviceFeatures supportedFeatures;
 	vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
-	return qf.isComplete() && extSupport && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+	return VK_CTX.graphicsfamily >= 0 && VK_CTX.presentfamily >= 0 && extSupport && swapChainAdequate && supportedFeatures.samplerAnisotropy;
 }
 
 
@@ -279,10 +252,8 @@ createLogicalDevice(VkPhysicalDevice physicalDevice,
 	VkQueue *graphicsQueue, VkQueue *presentQueue)
 {
 	VkDevice device = VK_NULL_HANDLE;
-	QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
 	std::vector<VkDeviceQueueCreateInfo> queueCreate;
-	std::set<int> uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
-	CTX.graphicsfamily = indices.graphicsFamily;
+	std::set<int> uniqueQueueFamilies = {CTX.graphicsfamily, CTX.presentfamily};
 	float queuePriority = 1.0f;
 	for (int qf : uniqueQueueFamilies) {
 		auto &x = queueCreate.emplace_back();
@@ -317,8 +288,8 @@ createLogicalDevice(VkPhysicalDevice physicalDevice,
 			VK_SUCCESS) {
 		throw std::runtime_error("failed to create logical device!");
 	}
-	vkGetDeviceQueue(device, indices.graphicsFamily, 0, graphicsQueue);
-	vkGetDeviceQueue(device, indices.presentFamily, 0, presentQueue);
+	vkGetDeviceQueue(device, VK_CTX.graphicsfamily, 0, graphicsQueue);
+	vkGetDeviceQueue(device, VK_CTX.presentfamily, 0, presentQueue);
 	return device;
 }
 
@@ -362,134 +333,14 @@ vma_init(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device) 
 	return allocator;
 }
 
-static VkExtent2D
-chooseSwapExtent(const VkSurfaceCapabilitiesKHR &cap, int width, int height)
-{
-	if (cap.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
-		return cap.currentExtent;
-	} else {
-		VkExtent2D ext = {(uint32_t)width, (uint32_t)height};
-		ext.width = std::max(cap.minImageExtent.width, std::min(cap.maxImageExtent.width, ext.width));
-		ext.height = std::max(cap.minImageExtent.height, std::min(cap.minImageExtent.height, ext.height));
-		return ext;
-	}
-}
-
-static VkSurfaceFormatKHR chooseSwapSurfaceFormat(
-			const std::vector<VkSurfaceFormatKHR> &availableFormats) {
-		for (const auto &fmt : availableFormats) {
-			if (fmt.format == VK_FORMAT_B8G8R8A8_SRGB&&
-					fmt.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-				return fmt;
-		}
-		return availableFormats[0];
-	}
-static 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &list) {
-		VkPresentModeKHR besetMode = VK_PRESENT_MODE_FIFO_KHR;
-		for (auto const p : list) {
-			if (p == VK_PRESENT_MODE_MAILBOX_KHR)
-				return p;
-			if (p == VK_PRESENT_MODE_IMMEDIATE_KHR)
-				besetMode = p;
-		}
-		return besetMode;
-	}
-
-static VkImageView
-texture_new_view(const vk_ctx *ctx,
-	VkImage image,
-	VkFormat format,
-	VkImageAspectFlags aspectFlags,
-	uint32_t mipLevels)
-{
-	VkImageView imageView;
-	VkImageViewCreateInfo createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	createInfo.image = image;
-	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	createInfo.format = format;
-	createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	createInfo.subresourceRange.aspectMask = aspectFlags;
-	createInfo.subresourceRange.baseMipLevel = 0;
-	createInfo.subresourceRange.levelCount = mipLevels;
-	createInfo.subresourceRange.baseArrayLayer = 0;
-	createInfo.subresourceRange.layerCount = 1;
-	if (vkCreateImageView(CTX.device, &createInfo, nullptr, &imageView) != VK_SUCCESS)
-		return VK_NULL_HANDLE;
-	return imageView;
-}
-
-
-
-static swapchainst
-createSwapChain(vk_ctx *ctx, VkPhysicalDevice phydevice, VkDevice device, VkSurfaceKHR surface, int width, int height)
-{
-	swapchainst swapchain;
-	auto chain = querySwapChainSupport(phydevice, surface);
-	auto surfaceFormat = chooseSwapSurfaceFormat(chain.formats);
-	auto presentMode = chooseSwapPresentMode(chain.presentModes);
-	auto extent = chooseSwapExtent(chain.capabilities, width, height);
-	uint32_t imageCount = chain.capabilities.minImageCount + 1;
-	if (chain.capabilities.maxImageCount > 0 && imageCount > chain.capabilities.maxImageCount)
-		imageCount = chain.capabilities.maxImageCount;
-	printf("createSwapChain:%d - %d\n", chain.capabilities.minImageCount, chain.capabilities.maxImageCount);
-
-	VkSwapchainCreateInfoKHR createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	createInfo.surface = surface;
-	createInfo.minImageCount = imageCount;
-	createInfo.imageFormat = surfaceFormat.format;
-	createInfo.imageColorSpace = surfaceFormat.colorSpace;
-	createInfo.imageExtent = extent;
-	createInfo.imageArrayLayers = 1;
-	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-	QueueFamilyIndices indices = findQueueFamilies(phydevice, surface);
-	uint32_t queueIndices[] = {(uint32_t)indices.graphicsFamily, (uint32_t)indices.presentFamily};
-	if (indices.graphicsFamily != indices.presentFamily) {
-		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-		createInfo.queueFamilyIndexCount = 2;
-		createInfo.pQueueFamilyIndices = queueIndices;
-	} else {
-		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		createInfo.queueFamilyIndexCount = 0;
-		createInfo.pQueueFamilyIndices = nullptr;
-	}
-	createInfo.preTransform = chain.capabilities.currentTransform;
-	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	createInfo.presentMode = presentMode;
-	createInfo.clipped = VK_TRUE;
-	createInfo.oldSwapchain = VK_NULL_HANDLE;
-	swapchain.handle = CTX.swapchain.handle;
-	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapchain.handle) != VK_SUCCESS)
-		throw std::runtime_error("failed to create swap chain");
-	CTX.swapchain.handle = swapchain.handle;
-	swapchain.imageformat = surfaceFormat.format;
-	swapchain.extent = extent;
-
-	std::vector<VkImage> images;
-	vkGetSwapchainImagesKHR(CTX.device, swapchain.handle, &imageCount, nullptr);
-	images.resize(imageCount);
-	vkGetSwapchainImagesKHR(CTX.device, swapchain.handle, &imageCount, images.data());
-	swapchain.imageviews.resize(images.size());
-	for (size_t i = 0; i < images.size(); i++) {
-		swapchain.imageviews[i] = texture_new_view(ctx, images[i], swapchain.imageformat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
-	}
-	return swapchain;
-}
-
 static VkCommandPool
 createCommandPool(VkPhysicalDevice phydevice, VkDevice logicdevice, VkSurfaceKHR surface)
 {
 	VkCommandPool commandpool;
-	QueueFamilyIndices family = findQueueFamilies(phydevice, surface);
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	poolInfo.queueFamilyIndex = family.graphicsFamily;
+	poolInfo.queueFamilyIndex = CTX.graphicsfamily;
 	if (vkCreateCommandPool(logicdevice, &poolInfo, nullptr, &commandpool) != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 	return commandpool;
@@ -698,10 +549,10 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	CTX.device = createLogicalDevice(CTX.phydevice, ext.surface, &CTX.graphicsqueue, &CTX.presentqueue);
 	CTX.descriptorpool = createDescriptorPool(CTX.device);
 	CTX.allocator = vma_init(CTX.instance, CTX.phydevice, CTX.device);
-	CTX.swapchain = createSwapChain(&CTX, CTX.phydevice, CTX.device, ext.surface, width, height);
 	CTX.commandpool = createCommandPool(CTX.phydevice, CTX.device, ext.surface);
 	CTX.surface = ext.surface;
 	CTX.pipeline_cache = create_pipeline_cache();
+	CTX.swapchain.init(CTX.instance, CTX.phydevice, CTX.device, CTX.surface, width, height);
 	VkResult result;
 	VkCommandBufferAllocateInfo cba = {};
 	cba.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -717,26 +568,7 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	CTX.depth_format = find_depth_format();
 	std::cout << "The GPU has a minimum buffer alignment of " <<
 		CTX.properties.limits.minUniformBufferOffsetAlignment << std::endl;
-
-	RENDER_PASS.reg(render_pass::FORWARD, new vk_forward_pass());
-
 	return 0;
-}
-
-static void
-cleanupSwapchain(const vk_ctx *ctx)
-{
-	for (auto view : CTX.swapchain.imageviews)
-		vkDestroyImageView(CTX.device, view, nullptr);
-	vkDestroySwapchainKHR(CTX.device, CTX.swapchain.handle, nullptr);
-}
-	
-void
-vk_ctx_recreate_swapchain(int width, int height)
-{
-	vkDeviceWaitIdle(VK_CTX.device);
-	cleanupSwapchain(&VK_CTX);
-	CTX.swapchain = createSwapChain(&CTX, CTX.phydevice, CTX.device, CTX.surface, width, height);
 }
 
 void
@@ -752,11 +584,46 @@ vk_ctx_frame_end()
 }
 
 void
+vk_ctx_renderpass_begin(render_texture *rt)
+{
+	VkExtent2D extent;
+	if (rt != nullptr) {
+		auto vk_rt = (vk_render_texture *)rt;
+		VK_CTX.current_renderpass = vk_rt->render_pass;
+		VK_CTX.current_framebuffer = vk_rt->framebuffer();
+		extent.width = vk_rt->width();
+		extent.height = vk_rt->height();
+	} else {
+		VK_CTX.current_renderpass = VK_CTX.swapchain.render_pass;
+		VK_CTX.current_framebuffer = VK_CTX.swapchain.framebuffer();
+		extent.width = VK_CTX.swapchain.extent.width;
+		extent.height = VK_CTX.swapchain.extent.height;
+	}
+	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
+	VkRenderPassBeginInfo renderPassInfo{};
+	std::array<VkClearValue, 2> clearColor{};
+	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
+	clearColor[1].depthStencil = { 1.0f, 0 };
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = VK_CTX.current_renderpass;
+	renderPassInfo.framebuffer = VK_CTX.current_framebuffer;
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = extent;
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
+	renderPassInfo.pClearValues = clearColor.data();
+	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void
+vk_ctx_renderpass_end()
+{
+	vkCmdEndRenderPass(VK_CTX.cmdbuf);
+}
+
+void
 vk_ctx_cleanup()
 {
-	cleanupSwapchain(&CTX);
-	delete RENDER_PASS.unreg(render_pass::FORWARD);
-	delete RENDER_PASS.unreg(render_pass::SHADOW);
+	CTX.swapchain.destroy();
 	vkDestroyCommandPool(CTX.device, CTX.commandpool, nullptr);
 	vkDestroyDevice(CTX.device, nullptr);
 	if (enableValidationLayers)

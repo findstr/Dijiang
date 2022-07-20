@@ -1,10 +1,8 @@
 #pragma once
-#include "vk_texture.h"
+#include "conf.h"
+#include "vk_ctx.h"
 #include "vk_object.h"
-#include "vk_buffer.h"
-#include "vk_framebuffer.h"
-#include "vk_depth_buffer.h"
-#include "vk_color_buffer.h"
+#include "vk_texture.h"
 #include "render/render_texture.h"
 
 namespace engine {
@@ -17,7 +15,7 @@ public:
 	intptr_t sampler() const override { return (intptr_t)(color_buffer[VK_CTX.frame_index].sampler(nullptr)); }
 	VkImageView imageview(int frame_index) { return color_buffer[frame_index].view; }
 	VkSampler sampler(int frame_index) { return color_buffer[frame_index].sampler(nullptr); }
-	VkFramebuffer framebuffer() { return framebuffers[vulkan::VK_CTX.frame_index]; }
+	VkFramebuffer framebuffer() { return framebuffers[VK_CTX.frame_index]; }
 
 private:
 	void create_colorbuffer();

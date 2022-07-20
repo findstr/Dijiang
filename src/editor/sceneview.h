@@ -20,6 +20,8 @@ public:
 	bool gizmos_show_skeleton = false;
 private:
 	vector2f mouse_position;
+	ImTextureID texture_id = nullptr;
+	std::unique_ptr<render_texture> render_texture;
 	std::unique_ptr<gameobject> cam_go;
 	std::unique_ptr<scene_camera> camera;
 };

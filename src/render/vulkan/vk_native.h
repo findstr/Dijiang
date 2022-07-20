@@ -3,7 +3,6 @@
 #include "vk_texture.h"
 #include "vk_texture2d.h"
 #include "vk_cubemap.h"
-#include "vk_forward_pass.h"
 #include "texture.h"
 
 namespace engine {
@@ -22,12 +21,6 @@ native_of(render::texture *tex)
 		vk_texture *null = nullptr;
 		return *null;
 	}
-}
-
-static inline vk_render_pass &
-native_of(i_render_pass *rp) 
-{
-	return *(vk_render_pass *)rp;
 }
 
 

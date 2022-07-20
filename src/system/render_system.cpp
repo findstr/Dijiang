@@ -5,10 +5,8 @@
 #include "render/vulkan/vk_ctx.h"
 #include "render/vulkan/vk_native.h"
 #include "render/vulkan/vk_surface.h"
-#include "render/vulkan/vk_framebuffer.h"
 #include "render/vulkan/vk_mesh.h"
 #include "render/vulkan/vk_material.h"
-#include "render/vulkan/vk_framebuffer.h"
 #include "render/vulkan/vk_shader_variables.h"
 #endif
 
@@ -88,17 +86,16 @@ render_system::frame_begin(float delta)
 	if (ok < 0)
 		return -1;
 	vulkan::vk_ctx_frame_begin();
-	auto result = vulkan::VK_FRAMEBUFFER.acquire();
+	auto result = vulkan::VK_CTX.swapchain.acquire();
 	switch (result) {
-	case vulkan::vk_framebuffer::acquire_result::NOT_READY:
+	case vulkan::vk_swapchain::acquire_result::NOT_READY:
 		acquire_success = false;
 		return 0;
-	case vulkan::vk_framebuffer::acquire_result::RECREATE_SWAPCHAIN:
+	case vulkan::vk_swapchain::acquire_result::RECREATE_SWAPCHAIN:
 		vulkan::surface_size(surface, &width, &height);
-		vulkan::vk_ctx_recreate_swapchain(width, height);
-		vulkan::VK_FRAMEBUFFER.resize();
+		vulkan::VK_CTX.swapchain.resize(width, height);
 		return 1;
-	case vulkan::vk_framebuffer::acquire_result::SUCCESS:
+	case vulkan::vk_swapchain::acquire_result::SUCCESS:
 		break;
 	}
 	vulkan::surface_tick(surface);
@@ -124,17 +121,15 @@ render_system::frame_begin(float delta)
 }
 
 void 
-render_system::renderpass_begin(bool clear)
+render_system::renderpass_begin(render_texture *rt)
 {
-	RENDER_PASS.begin(render_pass::FORWARD, 1, 1);
-	render_pass = vulkan::native_of(RENDER_PASS.get(render_pass::FORWARD)).handle();
-	frame_buffer = vulkan::VK_FRAMEBUFFER.current();
+	vulkan::vk_ctx_renderpass_begin(rt);
 }
 
 void
 render_system::renderpass_end()
 {
-	RENDER_PASS.end(render_pass::FORWARD);
+	vulkan::vk_ctx_renderpass_end();
 }
 	
 void
@@ -199,13 +194,13 @@ render_system::shadowpass_begin()
 	renderPassInfo.pClearValues = clearColor.data();
 	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	render_pass = st->render_pass;
+	vulkan::VK_CTX.current_renderpass = st->render_pass;
 }
 
 void
 render_system::shadowpass_end()
 {
-	RENDER_PASS.end(render_pass::FORWARD);
+	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
 }
 	
 void 
@@ -295,7 +290,7 @@ render_system::draw(draw_object &draw)
 	mesh->flush();
 	update_uniformbuffer_per_object(ubo_per_camera, ubo, draw);
 	uniform_per_object->unmap();
-	vkCmdBindPipeline(vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline(render_pass).handle);
+	vkCmdBindPipeline(vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline(vulkan::VK_CTX.current_renderpass).handle);
 #if IS_EDITOR
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
@@ -312,13 +307,13 @@ render_system::draw(draw_object &draw)
 	vkCmdBindIndexBuffer(vulkan::VK_CTX.cmdbuf, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindDescriptorSets(
 		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		mat->pipeline(render_pass).layout,
+		mat->pipeline(vulkan::VK_CTX.current_renderpass).layout,
 		0,
 		1, &mat->desc_set[vulkan::VK_CTX.frame_index],
 		0, nullptr);
 	vkCmdBindDescriptorSets(
 		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		mat->pipeline(render_pass).layout,
+		mat->pipeline(vulkan::VK_CTX.current_renderpass).layout,
 		1,
 		1, &vulkan::VK_CTX.engine_desc_set[vulkan::VK_CTX.frame_index],
 		ubo_offset.size(), ubo_offset.data());
@@ -341,7 +336,7 @@ render_system::frame_submit()
 {
 	if (vkEndCommandBuffer(vulkan::VK_CTX.cmdbuf) != VK_SUCCESS)
 		return ;
-	vulkan::VK_FRAMEBUFFER.submit(vulkan::VK_CTX.cmdbuf);
+	vulkan::VK_CTX.swapchain.submit(vulkan::VK_CTX.cmdbuf);
 	vulkan::vk_ctx_frame_end();
 }
 

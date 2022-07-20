@@ -192,7 +192,7 @@ imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
 	ImGuiStyle& style = ImGui::GetStyle();
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 	io.ConfigDockingAlwaysTabBar         = true;
 	io.ConfigWindowsMoveFromTitleBarOnly = true;
 
@@ -225,7 +225,7 @@ imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
 	init_info.MinImageCount = conf::MAX_FRAMES_IN_FLIGHT;
 	init_info.ImageCount    = conf::MAX_FRAMES_IN_FLIGHT;
 	
-	s->render_pass = ((vk_render_pass *)RENDER_PASS.get(render_pass::FORWARD))->handle();
+	s->render_pass = VK_CTX.swapchain.render_pass;
 
 	ImGui_ImplVulkan_Init(&init_info, s->render_pass);
 
@@ -306,30 +306,16 @@ int
 surface_post_tick(struct surface *s) 
 {
         // Rendering
-	auto &cmdbuf = VK_CTX.cmdbuf;
-	VkFramebuffer framebuffer = vulkan::VK_FRAMEBUFFER.current();
-	VkRenderPassBeginInfo renderPassInfo{};
-	std::array<VkClearValue, 2> clearColor{};
-	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
-	clearColor[1].depthStencil = { 1.0f, 0 };
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = s->render_pass;
-	renderPassInfo.framebuffer = framebuffer;
-	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent.width = vulkan::VK_CTX.swapchain.extent.width;
-	renderPassInfo.renderArea.extent.height = vulkan::VK_CTX.swapchain.extent.height;
-	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
-	renderPassInfo.pClearValues = clearColor.data();
-	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vk_ctx_renderpass_begin(nullptr);
 
 	ImGui::Render();
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), VK_CTX.cmdbuf);
-
-	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
-/*
+	
+	vk_ctx_renderpass_end();
+	
 	ImGui::UpdatePlatformWindows();
 	ImGui::RenderPlatformWindowsDefault();
-*/
+	
 	return 0;
 }
 
