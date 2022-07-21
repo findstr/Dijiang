@@ -43,7 +43,7 @@ camera::render()
 	light_cam.viewport.height = 1.0;
 	RENDER_SYSTEM.set_light(light::all_lights()[0]);
 	RENDER_SYSTEM.set_camera(&light_cam);
-	level::cull(this, draw_list, render_pass::SHADOW);
+	level::cull(&light_cam, draw_list, render_pass::SHADOW);
 	for (auto &d:draw_list) { 
 		RENDER_SYSTEM.draw(d);
 	}

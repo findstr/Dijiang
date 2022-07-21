@@ -30,7 +30,7 @@ public:
 	~vk_material() override {}
 	void set_shader(std::shared_ptr<render::shader> &s) override;
 	void set_texture(const std::string &name, std::shared_ptr<render::texture> &tex) override;
-	vk_pipeline &pipeline(VkRenderPass render_pass);
+	vk_pipeline &pipeline(VkRenderPass render_pass, bool enable_msaa);
 public:
 	std::array<VkDescriptorSet, conf::MAX_FRAMES_IN_FLIGHT> desc_set;
 	std::unordered_map<std::string, std::shared_ptr<render::texture>> tex_args;

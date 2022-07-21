@@ -493,6 +493,8 @@ vk_ctx_init_lighting()
 	vkUpdateDescriptorSets(VK_CTX.device,
 		static_cast<uint32_t>(descriptorWrite.size()),
 		descriptorWrite.data(), 0, nullptr);
+
+
 }
 
 static VkFormat
@@ -537,6 +539,18 @@ create_pipeline_cache()
 	return pipeline_cache;
 }
 
+VkSampleCountFlagBits getMaxUsableSampleCount() 
+{
+    VkSampleCountFlags counts = VK_CTX.properties.limits.framebufferColorSampleCounts & VK_CTX.properties.limits.framebufferDepthSampleCounts;
+    if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+    if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+    if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+    if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+    if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+    if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+    return VK_SAMPLE_COUNT_1_BIT;
+}
+
 int
 vk_ctx_init(const char *name, surface *s, int width, int height)
 {
@@ -568,7 +582,13 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	CTX.depth_format = find_depth_format();
 	std::cout << "The GPU has a minimum buffer alignment of " <<
 		CTX.properties.limits.minUniformBufferOffsetAlignment << std::endl;
+
+	CTX.vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(VK_CTX.instance, "vkCmdBeginDebugUtilsLabelEXT");
+	CTX.vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(VK_CTX.instance, "vkCmdEndDebugUtilsLabelEXT");
+	CTX.msaaSamples = getMaxUsableSampleCount();
+
 	return 0;
+
 }
 
 void
@@ -586,37 +606,29 @@ vk_ctx_frame_end()
 void
 vk_ctx_renderpass_begin(render_texture *rt)
 {
-	VkExtent2D extent;
 	if (rt != nullptr) {
 		auto vk_rt = (vk_render_texture *)rt;
 		VK_CTX.current_renderpass = vk_rt->render_pass;
 		VK_CTX.current_framebuffer = vk_rt->framebuffer();
-		extent.width = vk_rt->width();
-		extent.height = vk_rt->height();
+		VK_CTX.enable_msaa = vk_rt->enable_msaa;
+		vk_rt->begin();
 	} else {
 		VK_CTX.current_renderpass = VK_CTX.swapchain.render_pass;
 		VK_CTX.current_framebuffer = VK_CTX.swapchain.framebuffer();
-		extent.width = VK_CTX.swapchain.extent.width;
-		extent.height = VK_CTX.swapchain.extent.height;
+		VK_CTX.enable_msaa = false;
+		VK_CTX.swapchain.begin();
 	}
-	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
-	VkRenderPassBeginInfo renderPassInfo{};
-	std::array<VkClearValue, 2> clearColor{};
-	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
-	clearColor[1].depthStencil = { 1.0f, 0 };
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = VK_CTX.current_renderpass;
-	renderPassInfo.framebuffer = VK_CTX.current_framebuffer;
-	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = extent;
-	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
-	renderPassInfo.pClearValues = clearColor.data();
-	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	if (rt != nullptr) {
+		vk_ctx_debug_label_begin("RenderToTexture");
+	} else {
+		vk_ctx_debug_label_begin("RenderToSwapchain");
+	}
 }
 
 void
 vk_ctx_renderpass_end()
 {
+	vk_ctx_debug_label_end();
 	vkCmdEndRenderPass(VK_CTX.cmdbuf);
 }
 
@@ -630,6 +642,27 @@ vk_ctx_cleanup()
 		DestroyDebugReportCallbackEXT(CTX.instance, CTX.dbgcallback, nullptr);
 	vkDestroySurfaceKHR(CTX.instance, CTX.surface, nullptr);
 	vkDestroyInstance(CTX.instance, nullptr);
+}
+
+
+void
+vk_ctx_debug_label_begin(const char *label)
+{
+	VkDebugUtilsLabelEXT label_info;
+	label_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+	label_info.pNext = nullptr;
+	label_info.pLabelName = label;
+	label_info.color[0] = 1.0f;
+	label_info.color[1] = 1.0f;
+	label_info.color[2] = 1.0f;
+	label_info.color[3] = 1.0f;
+	//VK_CTX.vkCmdBeginDebugUtilsLabelEXT(VK_CTX.cmdbuf, &label_info);
+}
+
+void
+vk_ctx_debug_label_end()
+{
+	//VK_CTX.vkCmdEndDebugUtilsLabelEXT(VK_CTX.cmdbuf);
 }
 
 }}

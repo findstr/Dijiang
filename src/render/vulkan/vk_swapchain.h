@@ -44,6 +44,8 @@ private:
 	VkFormat imageformat;
 	std::vector<VkImageView> imageviews;
 public:
+	void begin();
+	void end();
 	VkExtent2D extent = {0, 0};
 	VkRenderPass render_pass = VK_NULL_HANDLE;
 	static support_details query_support(VkPhysicalDevice device, VkSurfaceKHR surface);

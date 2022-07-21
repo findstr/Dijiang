@@ -11,7 +11,7 @@ VkPrimitiveTopology vk_pipeline::primitive_topolgy =
 	VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
 vk_pipeline *
-vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest)
+vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa)
 {
 	VkPipeline pipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelinelayout = VK_NULL_HANDLE;
@@ -102,7 +102,7 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest)
 	VkPipelineMultisampleStateCreateInfo multisampling = {};
 	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampling.sampleShadingEnable = VK_FALSE;
-	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.rasterizationSamples = msaa ? VK_CTX.msaaSamples : VK_SAMPLE_COUNT_1_BIT;
 	multisampling.minSampleShading = 1.0f;
 	multisampling.pSampleMask = nullptr;
 	multisampling.alphaToCoverageEnable = VK_FALSE;

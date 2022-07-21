@@ -346,6 +346,30 @@ vk_swapchain::submit(VkCommandBuffer cmdbuf)
 }
 
 void
+vk_swapchain::begin()
+{
+	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
+	VkRenderPassBeginInfo renderPassInfo{};
+	std::array<VkClearValue, 2> clearColor{};
+	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
+	clearColor[1].depthStencil = { 1.0f, 0 };
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = render_pass;
+	renderPassInfo.framebuffer = framebuffer();
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = extent;
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearColor.size());
+	renderPassInfo.pClearValues = clearColor.data();
+	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+void
+vk_swapchain::end()
+{
+	vkCmdEndRenderPass(VK_CTX.cmdbuf);
+}
+
+void
 vk_swapchain::destroy()
 {
 	destroy_swapchain();

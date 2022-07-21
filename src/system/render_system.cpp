@@ -181,9 +181,10 @@ render_system::shadowpass_begin()
 	*/
 	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
 	VkRenderPassBeginInfo renderPassInfo{};
-	std::array<VkClearValue, 2> clearColor{};
+	std::array<VkClearValue, 3> clearColor{};
 	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
-	clearColor[1].depthStencil = { 1.0f, 0 };
+	clearColor[1].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
+	clearColor[2].depthStencil = { 1.0f, 0 };
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = st->render_pass;
 	renderPassInfo.framebuffer = st->framebuffer();
@@ -195,11 +196,16 @@ render_system::shadowpass_begin()
 	vkCmdBeginRenderPass(cmdbuf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	vulkan::VK_CTX.current_renderpass = st->render_pass;
+	vulkan::VK_CTX.enable_msaa = st->enable_msaa;
+
+	vulkan::vk_ctx_debug_label_begin("RenderShadowmap");
+
 }
 
 void
 render_system::shadowpass_end()
 {
+	vulkan::vk_ctx_debug_label_end();
 	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
 }
 	
@@ -290,7 +296,7 @@ render_system::draw(draw_object &draw)
 	mesh->flush();
 	update_uniformbuffer_per_object(ubo_per_camera, ubo, draw);
 	uniform_per_object->unmap();
-	vkCmdBindPipeline(vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline(vulkan::VK_CTX.current_renderpass).handle);
+	vkCmdBindPipeline(vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, mat->pipeline(vulkan::VK_CTX.current_renderpass, vulkan::VK_CTX.enable_msaa).handle);
 #if IS_EDITOR
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
@@ -307,13 +313,13 @@ render_system::draw(draw_object &draw)
 	vkCmdBindIndexBuffer(vulkan::VK_CTX.cmdbuf, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindDescriptorSets(
 		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		mat->pipeline(vulkan::VK_CTX.current_renderpass).layout,
+		mat->pipeline(vulkan::VK_CTX.current_renderpass, vulkan::VK_CTX.enable_msaa).layout,
 		0,
 		1, &mat->desc_set[vulkan::VK_CTX.frame_index],
 		0, nullptr);
 	vkCmdBindDescriptorSets(
 		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		mat->pipeline(vulkan::VK_CTX.current_renderpass).layout,
+		mat->pipeline(vulkan::VK_CTX.current_renderpass, vulkan::VK_CTX.enable_msaa).layout,
 		1,
 		1, &vulkan::VK_CTX.engine_desc_set[vulkan::VK_CTX.frame_index],
 		ubo_offset.size(), ubo_offset.data());

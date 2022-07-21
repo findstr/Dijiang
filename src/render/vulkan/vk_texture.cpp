@@ -72,7 +72,7 @@ vk_texture::sampler(const render::texture *tex) const
 
 
 void
-vk_texture::create(const render::texture *tex, VkImageUsageFlags usage, int layer_count)
+vk_texture::create(const render::texture *tex, VkImageUsageFlags usage, int layer_count, VkSampleCountFlagBits samplecount)
 {
 	destroy();
 	vk_format format(tex->format, tex->linear);
@@ -93,7 +93,7 @@ vk_texture::create(const render::texture *tex, VkImageUsageFlags usage, int laye
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	imageInfo.usage = usage;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.samples = samplecount;
 
 	VmaAllocationCreateInfo vaci = {};
 	vaci.usage = VMA_MEMORY_USAGE_AUTO;

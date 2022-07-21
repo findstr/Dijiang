@@ -40,13 +40,13 @@ vk_material::set_shader(std::shared_ptr<render::shader> &s)
 }
 
 vk_pipeline &
-vk_material::pipeline(VkRenderPass pass)
+vk_material::pipeline(VkRenderPass pass, bool enablemsaa)
 {
 	for (auto &iter:pipelines) {
 		if (iter.renderpass == pass)
 			return *iter.pipeline;
 	}
-	auto pl = vk_pipeline::create(pass, (vk_shader *)shader.get(), ztest);
+	auto pl = vk_pipeline::create(pass, (vk_shader *)shader.get(), ztest, enablemsaa);
 	pipelines.emplace_back(pass, pl);
 	return *pl;
 }

@@ -32,7 +32,11 @@ namespace vulkan {
 		VkCommandBuffer cmdbuf = VK_NULL_HANDLE;
 		VkFramebuffer current_framebuffer = VK_NULL_HANDLE;
 		VkRenderPass current_renderpass = VK_NULL_HANDLE;
+		bool enable_msaa = false;	
 		std::array<VkCommandBuffer, conf::MAX_FRAMES_IN_FLIGHT> cmdbufs;
+		PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT = VK_NULL_HANDLE;
+		PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT = VK_NULL_HANDLE;
+		VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
 	};
 	int vk_ctx_init(const char *name, surface *s, int width, int height);
 	void vk_ctx_init_lighting();
@@ -41,6 +45,8 @@ namespace vulkan {
 	void vk_ctx_renderpass_begin(render_texture *rt);
 	void vk_ctx_renderpass_end();
 	void vk_ctx_cleanup();
+	void vk_ctx_debug_label_begin(const char *label);
+	void vk_ctx_debug_label_end();
 	extern struct vk_ctx VK_CTX;
 }}
 

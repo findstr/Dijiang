@@ -30,9 +30,7 @@ struct draw_object {
 	render::mesh *mesh;
 	render::material *material;
 	const std::vector<animation::skeleton::pose> *skeleton_pose = nullptr;
-#ifdef IS_EDITOR
 	gameobject *go = nullptr;
-#endif
 };
 
 }
