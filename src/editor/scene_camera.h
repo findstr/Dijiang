@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "components/camera.h"
+#include "components/light.h"
 #include "gameobject.h"
 
 namespace engine {
@@ -11,9 +12,12 @@ public:
 public:
 	const std::string name() override { return "scene_camera"; }
 	void render();
-	void show_skeleton(bool enable) { show_skeleton_ = enable; }
+public:
+	bool show_skeleton = true;
+	bool show_camera = true;
 private:
-	bool show_skeleton_ = false;
+	void draw_camera(camera *cam);
+	void draw_light(camera *cam, light *li);
 };
 
 

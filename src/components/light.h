@@ -6,6 +6,7 @@
 #include "draw_object.h"
 #include "gameobject.h"
 #include "component.h"
+#include "glm/glm.hpp"
 
 namespace engine {
 
@@ -21,6 +22,7 @@ public:
 public:
 	const std::string name() override { return "light"; }
 	vector3f direction() const { return transform->rotation * vector3f::forward(); }
+	void get_shadow_matrix(camera *cam, vector3f &center, glm::mat4 &view, glm::mat4 &proj);
 public:
 	void reg();
 	void unreg();

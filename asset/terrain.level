@@ -1,0 +1,130 @@
+---
+root:
+    - gameobject:
+        id: +1
+        parent: +0
+        name: Camera
+        components:
+                - transform:
+                    position:
+                        x: +0
+                        y: +1
+                        z: -5
+                    rotation:
+                        x: +0
+                        y: +0
+                        z: +0
+                    scale:
+                        x: +1
+                        y: +1
+                        z: +1
+                - camera:
+                    fov: +60
+                    aspect: +1
+                    clip_near_plane: +1.0
+                    clip_far_plane: +100.0
+                    perspective: true
+                    orthographic_size: +10.0
+                - component.main:
+                    speed: +0.0
+    - gameobject:
+        id: +2
+        parent: +0
+        name: Directional Light
+        components:
+                - transform:
+                    position:
+                        x: +0
+                        y: +1
+                        z: -5
+                    rotation:
+                        x: +45
+                        y: 45
+                        z: +0
+                    scale:
+                        x: +1
+                        y: +1
+                        z: +1
+                - light:
+                    type: directional
+                    color:
+                        r: +1
+                        g: +1
+                        b: +1
+                        a: +1
+                    intensity: 1
+    - gameobject:
+        id: +3
+        parent: +0
+        name: Player
+        components:
+                - transform:
+                    position:
+                        x: +0
+                        y: +0
+                        z: +0
+                    rotation:
+                        x: -90
+                        y: +0
+                        z: +0
+                    scale:
+                        x: +1
+                        y: +1
+                        z: +1
+                - skinrender:
+                    mesh: asset/models/robot.obj
+                    skin: asset/models/robot.skin
+                    material:
+                        - asset/material/robot.mat
+                        - asset/material/skeletonshadowcaster.mat
+                - animator:
+                    skeleton: asset/skeleton/avatar.skeleton
+    - gameobject:
+        id: +4
+        parent: +0
+        name: Fence
+        components:
+                - transform:
+                    position:
+                        x: +0
+                        y: +0
+                        z: +0
+                    rotation:
+                        x: +0
+                        y: +0
+                        z: -0
+                    scale:
+                        x: +100
+                        y: +1
+                        z: +100
+                - meshfilter:
+                    - submesh:
+                        mesh: asset/models/terrain_gridlines.gltf
+                - meshrender:
+                    material:
+                        - asset/material/silver.mat
+                        - asset/material/shadowcaster.mat
+    - gameobject:
+        id: +5
+        parent: +0
+        name: Skybox
+        components:
+                - transform:
+                    position:
+                        x: +0
+                        y: +0
+                        z: +0
+                    rotation:
+                        x: +0
+                        y: +0
+                        z: +0
+                    scale:
+                        x: +10
+                        y: +10
+                        z: +10
+                - meshfilter:
+                    - submesh:
+                        mesh: asset/models/skybox.obj
+                - meshrender:
+                    material: 
+                        - asset/material/skybox.mat

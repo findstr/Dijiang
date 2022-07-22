@@ -137,8 +137,8 @@ render_system::shadowpass_begin()
 {
 	if (shadow_texture == nullptr) {
 		shadow_texture.reset(render_texture::create(
-			vulkan::VK_CTX.swapchain.extent.width,
-			vulkan::VK_CTX.swapchain.extent.height,
+			2048,
+			2048,
 			texture_format::R32, texture_format::D32, true));
 
 		auto *st = (vulkan::vk_render_texture *)(shadow_texture.get());
@@ -184,6 +184,7 @@ render_system::shadowpass_begin()
 	std::array<VkClearValue, 3> clearColor{};
 	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
 	clearColor[1].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
+	clearColor[1].depthStencil = { 1.0f, 0 };
 	clearColor[2].depthStencil = { 1.0f, 0 };
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = st->render_pass;
@@ -198,6 +199,13 @@ render_system::shadowpass_begin()
 	vulkan::VK_CTX.current_renderpass = st->render_pass;
 	vulkan::VK_CTX.enable_msaa = st->enable_msaa;
 
+	viewport.x = 0;
+	viewport.y = 0;
+	viewport.width = st->width();
+	viewport.height = st->height();
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
 	vulkan::vk_ctx_debug_label_begin("RenderShadowmap");
 
 }
@@ -210,43 +218,41 @@ render_system::shadowpass_end()
 }
 	
 void 
-render_system::set_light(light *light)
+render_system::set_light(light *li, camera *cam)
 {
+	vector3f center;
 	ubo_per_frame = uniform_per_frame->alloc();
-	vector3f direction = light->direction().normalized();
-	auto c = light->color;
-	c.r *= light->intensity;
-	c.g *= light->intensity;
-	c.b *= light->intensity;
+	vector3f direction = li->direction().normalized();
+	auto c = li->color;
+	c.r *= li->intensity;
+	c.g *= li->intensity;
+	c.b *= li->intensity;
 	ubo_per_frame->engine_light_ambient = glm::vec4(1.0f);
 	ubo_per_frame->engine_light_direction.x = direction.x();
 	ubo_per_frame->engine_light_direction.y = direction.y();
 	ubo_per_frame->engine_light_direction.z = direction.z();
 	ubo_per_frame->engine_light_radiance = glm::vec4(c.r, c.g, c.b, 1.0f);
 
-	camera cam(light->go);
-	cam.perspective = false;
-	cam.orthographic_size = 30.f;
-	cam.viewport.x = 0;
-	cam.viewport.y = 0;
-	cam.viewport.width = 1.0;
-	cam.viewport.height = 1.0;
-
-	auto eye = cam.transform->position;
-	auto eye_dir = eye + cam.forward() * 5.0f;
-	auto up = cam.up();
-
-	ubo_per_frame->engine_light_matrix_view[0] = glm::lookAtRH(
-			glm::vec3(eye.x(), eye.y(), eye.z()),
-			glm::vec3(eye_dir.x(), eye_dir.y(), eye_dir.z()),
-			glm::vec3(up.x(), up.y(), up.z()));
-	ubo_per_frame->engine_light_matrix_project[0] = glm::orthoRH_ZO(
-			-cam.orthographic_size, cam.orthographic_size,
-			-cam.orthographic_size, cam.orthographic_size, 
-			cam.clip_near_plane, cam.clip_far_plane);
-	ubo_per_frame->engine_light_matrix_project[0][1][1] *= -1;
+	li->get_shadow_matrix(cam,
+		center,
+		ubo_per_frame->engine_light_matrix_view[0],
+		ubo_per_frame->engine_light_matrix_project[0]);
 	ubo_offset[vulkan::ENGINE_PER_FRAME_BINDING] = uniform_per_frame->offset();
 	uniform_per_frame->unmap();
+}
+
+
+void
+render_system::set_light_camera(light *li, camera *cam)
+{
+	vector3f center;
+	ubo_per_camera = uniform_per_camera->alloc();
+	li->get_shadow_matrix(cam, center, 
+		ubo_per_camera->view, 
+		ubo_per_camera->proj);
+	ubo_per_camera->engine_camera_pos = glm::vec4(center.x(), center.y(), center.z(), 1.0f);
+	ubo_offset[vulkan::ENGINE_PER_CAMERA_BINDING] = uniform_per_camera->offset();
+	uniform_per_camera->unmap();
 }
 
 void 
@@ -300,7 +306,7 @@ render_system::draw(draw_object &draw)
 #if IS_EDITOR
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent = vulkan::VK_CTX.swapchain.extent;
+	scissor.extent = {(uint32_t) viewport.width, (uint32_t)viewport.height };
 	vkCmdSetScissor(vulkan::VK_CTX.cmdbuf, 0, 1, &scissor);
 #endif
 	vkCmdSetViewport(vulkan::VK_CTX.cmdbuf, 0, 1, &viewport);

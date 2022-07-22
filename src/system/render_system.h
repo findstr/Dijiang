@@ -25,7 +25,8 @@ public:
 	void shadowpass_begin();
 	void shadowpass_end();
 	void set_camera(camera *cam);
-	void set_light(light *light);
+	void set_light(light *li, camera *cam);
+	void set_light_camera(light *li, camera *cam);
 	void draw(draw_object &draw);
 	void frame_end(float delta);
 	void frame_submit();

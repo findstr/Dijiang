@@ -21,7 +21,7 @@ sceneview::sceneview() :
 	camera->transform->rotation = quaternion::identity();
 	camera->fov = 60.0f;
 	camera->aspect = 1.0f;
-	camera->clip_far_plane = 100.0f;
+	camera->clip_far_plane = 5000.0f;
 	camera->clip_near_plane = 0.1f;
 
 	render_texture.reset(render_texture::create(
@@ -46,7 +46,8 @@ sceneview::tick(engine *e, float delta)
 	ImGui::Begin(title.c_str(), &is_open, window_flags);
 	ImGui::BeginMenuBar();
 	if (ImGui::BeginMenu("Gizoms")) {
-		ImGui::MenuItem("ShowSkeleton", "", &gizmos_show_skeleton);
+		ImGui::MenuItem("Skeleton", "", &camera->show_skeleton);
+		ImGui::MenuItem("Camera", "", &camera->show_camera);
                 ImGui::EndMenu();
 	}
 	ImGui::EndMenuBar();
@@ -54,29 +55,28 @@ sceneview::tick(engine *e, float delta)
 	if (ImGui::IsWindowFocused()) {
 		float mouse_delta = input::mouse_scroll_delta();
 		if (std::abs(mouse_delta) > 0.00001f) {
-			camera->transform->position += camera->forward() * mouse_delta * delta * 10.0f;
+			camera->transform->position += camera->forward() * mouse_delta * delta * 50.0f;
+		} else if (input::mouse_get_button(1)) {
+			vector2f mouse_delta = mouse_new_pos - mouse_position;
+			camera->transform->position += (camera->right() * mouse_delta.x() + 
+				camera->up() * mouse_delta.y() * -1.f)* delta * 500.0f;
 		} else if (input::mouse_get_button(2)) {
 			vector2f mouse_delta = mouse_new_pos - mouse_position;
 			if (std::abs(mouse_delta.x()) + std::abs(mouse_delta.y()) > 0.0001f) {
 				if (std::abs(mouse_delta.x()) > std::abs(mouse_delta.y()) && std::abs(mouse_delta.x()) > 0.0001f) {
 					quaternion rot;
 					rot.from_axis_angle(vector3f::up(), mouse_delta.x() * 50.f);
-					vector3f forward = rot * camera->forward();
-					vector3f up = rot * camera->up();
-					camera->transform->rotation = quaternion::look_at(forward, up);
+					camera->transform->rotation = rot * camera->transform->rotation;
 				} else if (std::abs(mouse_delta.x()) < std::abs(mouse_delta.y()) && std::abs(mouse_delta.y()) > 0.0001f) {
 					quaternion rot;
 					rot.from_axis_angle(camera->right(), mouse_delta.y() * 50.f);
-					vector3f up = rot * camera->up();
-					vector3f forward = rot * camera->forward();
-					camera->transform->rotation = quaternion::look_at(forward, up);
+					camera->transform->rotation = rot * camera->transform->rotation;
 				}
 			}
 		}
 	}
 	mouse_position = mouse_new_pos;
 	camera->render_target = render_texture.get();
-	camera->show_skeleton(gizmos_show_skeleton);
 	camera->render();
 	camera->render_target = nullptr;
 	ImGui::Image(texture_id, ImGui::GetContentRegionAvail());

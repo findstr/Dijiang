@@ -58,6 +58,13 @@ struct vector3f : public Eigen::Vector3f {
 		result.z() = z() * v;
 		return result;
 	}
+	vector3f operator /(float v) const {
+		vector3f result;
+		result.x() = x() / v;
+		result.y() = y() / v;
+		result.z() = z() / v;
+		return result;
+	}
 	vector3f operator -(const vector3f &v) const {
 		vector3f result;
 		result.x() = x() - v.x();

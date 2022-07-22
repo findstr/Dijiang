@@ -34,6 +34,7 @@ public:
 public:
 	std::array<VkDescriptorSet, conf::MAX_FRAMES_IN_FLIGHT> desc_set;
 	std::unordered_map<std::string, std::shared_ptr<render::texture>> tex_args;
+	VkPrimitiveTopology primitive_topolgy = VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 private:
 	std::vector<pipeline_cache> pipelines;
 };

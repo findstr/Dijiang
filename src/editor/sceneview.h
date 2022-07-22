@@ -17,7 +17,6 @@ public:
 public:
 	const std::string title;
 	bool is_open = true;
-	bool gizmos_show_skeleton = false;
 private:
 	vector2f mouse_position;
 	ImTextureID texture_id = nullptr;

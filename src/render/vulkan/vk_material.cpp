@@ -46,7 +46,7 @@ vk_material::pipeline(VkRenderPass pass, bool enablemsaa)
 		if (iter.renderpass == pass)
 			return *iter.pipeline;
 	}
-	auto pl = vk_pipeline::create(pass, (vk_shader *)shader.get(), ztest, enablemsaa);
+	auto pl = vk_pipeline::create(pass, (vk_shader *)shader.get(), ztest, enablemsaa, primitive_topolgy);
 	pipelines.emplace_back(pass, pl);
 	return *pl;
 }

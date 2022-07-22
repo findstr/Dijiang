@@ -23,7 +23,7 @@ private:
 	void create_colorbuffer();
 	void create_depthbuffer();
 public:
-	bool enable_msaa = true;
+	bool enable_msaa = false;
 	VkRenderPass render_pass;
 	vk_texture color_buffer[conf::MAX_FRAMES_IN_FLIGHT];
 	vk_texture msaa_buffer[conf::MAX_FRAMES_IN_FLIGHT];

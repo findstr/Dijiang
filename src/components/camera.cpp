@@ -1,5 +1,6 @@
 #include "level.h"
 #include "camera.h"
+#include "glm/glm.hpp"
 #include "system/render_system.h"
 
 namespace engine {
@@ -33,17 +34,9 @@ void
 camera::render()
 {
 	RENDER_SYSTEM.shadowpass_begin();
-	auto *li = light::all_lights()[0];
-	camera light_cam(li->go);
-	light_cam.perspective = false;
-	light_cam.orthographic_size = 30.f;
-	light_cam.viewport.x = 0;
-	light_cam.viewport.y = 0;
-	light_cam.viewport.width = 1.0;
-	light_cam.viewport.height = 1.0;
-	RENDER_SYSTEM.set_light(light::all_lights()[0]);
-	RENDER_SYSTEM.set_camera(&light_cam);
-	level::cull(&light_cam, draw_list, render_pass::SHADOW);
+	RENDER_SYSTEM.set_light(light::all_lights()[0], this);
+	RENDER_SYSTEM.set_light_camera(light::all_lights()[0], this);
+	level::cull(this, draw_list, render_pass::SHADOW);
 	for (auto &d:draw_list) { 
 		RENDER_SYSTEM.draw(d);
 	}

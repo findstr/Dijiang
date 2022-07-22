@@ -7,11 +7,8 @@
 namespace engine {
 namespace vulkan {
 
-VkPrimitiveTopology vk_pipeline::primitive_topolgy =
-	VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
 vk_pipeline *
-vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa)
+vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa, VkPrimitiveTopology primitive_topolgy)
 {
 	VkPipeline pipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipelinelayout = VK_NULL_HANDLE;
