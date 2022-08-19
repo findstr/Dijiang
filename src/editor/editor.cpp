@@ -124,13 +124,15 @@ editor::draw_inspector(::engine::editor::inspector *insp)
 void
 editor::tick(float delta)
 {
+	gameview->tick(engine, delta);
+	/*
 	draw_menu();
 	auto insp = hierarchy.tick(engine, delta);
 	if (insp != nullptr)
 		inspector = insp;
-	gameview->tick(engine, delta);
 	sceneview->tick(engine, delta);
 	draw_inspector(inspector);
+	*/
 }
 
 void

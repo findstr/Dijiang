@@ -1,6 +1,7 @@
 #include <optional>
 #include "vk_ctx.h"
 #include "vk_format.h"
+#include "vk_sampler_pool.h"
 #include "vk_render_texture.h"
 
 namespace engine {
@@ -13,10 +14,10 @@ vk_render_texture::create_colorbuffer()
 	for (int i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
 		if (enable_msaa) {
 			msaa_buffer[i].create(this, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1, VK_CTX.msaaSamples);
-			msaa_buffer[i].sampler(this);
+			msaa_sampler[i] = vk_sampler_pool::inst().fetch(this);
 		}
 		color_buffer[i].create(this, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-		color_buffer[i].sampler(this);
+		color_sampler[i] = vk_sampler_pool::inst().fetch(this);
 	}
 }
 
@@ -40,7 +41,7 @@ vk_render_texture::create_depthbuffer()
 		depth_buffer.create(&tex, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 1, VK_CTX.msaaSamples);
 	else
 		depth_buffer.create(&tex, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-	depth_buffer.sampler(&tex);
+	depth_sampler = vk_sampler_pool::inst().fetch(&tex);
 }
 
 void

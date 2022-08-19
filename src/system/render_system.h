@@ -9,6 +9,7 @@
 #include "render/vulkan/vk_surface.h"
 #include "render/vulkan/vk_uniform.h"
 #include "render/vulkan/vk_shader_variables.h"
+#include "render/vulkan/vk_buffer.h"
 #endif
 
 namespace engine {
@@ -27,10 +28,13 @@ public:
 	void set_camera(camera *cam);
 	void set_light(light *li, camera *cam);
 	void set_light_camera(light *li, camera *cam);
-	void draw(draw_object &draw);
+	void init_for_object(std::vector<draw_object> &draw);
+	void draw(std::vector<draw_object> &draw);
 	void frame_end(float delta);
 	void frame_submit();
+	void show_fps(int fps);
 	void get_resolution(int *x, int *y);
+	bool is_running();
 public:
 	static render_system &inst() {
 		static render_system *rs = nullptr;
@@ -41,12 +45,13 @@ public:
 private:
 #if USE_VULKAN
 	bool acquire_success = true;
-	vulkan::surface *surface = nullptr;
 	std::array<uint32_t, 3> ubo_offset;
 	VkViewport viewport;
 	std::unique_ptr<render_texture> shadow_texture;
 	render::ubo::per_frame *ubo_per_frame = nullptr;
 	render::ubo::per_camera *ubo_per_camera = nullptr;
+	vulkan::vk_buffer indirect_buffer[conf::MAX_FRAMES_IN_FLIGHT];
+	int indirect_cmd_count[conf::MAX_FRAMES_IN_FLIGHT];
 	std::unique_ptr<vulkan::vk_uniform<render::ubo::per_frame, vulkan::ENGINE_PER_FRAME_BINDING>> uniform_per_frame;
 	std::unique_ptr<vulkan::vk_uniform<render::ubo::per_camera, vulkan::ENGINE_PER_CAMERA_BINDING>> uniform_per_camera;
 	std::unique_ptr<vulkan::vk_uniform<render::ubo::per_object, vulkan::ENGINE_PER_OBJECT_BINDING>> uniform_per_object;

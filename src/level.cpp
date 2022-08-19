@@ -6,6 +6,7 @@
 #include "components/skinrender.h"
 #include "components/animator.h"
 #include "resource/resource.h"
+#include "render/gpu_interface.h"
 
 namespace engine {
 
@@ -44,9 +45,9 @@ level::tick(float delta)
 			continue;
 		auto &trans = go->transform;
 		auto &ptrans = p->transform;
-		trans.position = ptrans.position + trans.local_position;
-		trans.rotation = ptrans.rotation * trans.local_rotation;
-		trans.scale = ptrans.scale * trans.local_scale;
+		trans.set_position(ptrans.position() + trans.local_position());
+		trans.set_rotation(ptrans.rotation() * trans.local_rotation());
+		trans.set_scale(ptrans.scale() * trans.local_scale());
 	}
 	for (auto &iter:gobjects)
 		iter.second->tick(delta);
@@ -76,7 +77,7 @@ level::load(const std::string &path)
 }
 
 void
-level::cull(camera *cam, std::vector<draw_object> &list, render_pass::path path)
+level::cull(camera *cam, std::vector<draw_object> &list, enum render::shader::light_mode light_mode)
 {
 	for (auto &lv:levels) {
 		for (auto &iter:lv->gobjects) {
@@ -89,10 +90,14 @@ level::cull(camera *cam, std::vector<draw_object> &list, render_pass::path path)
 			render::mesh *mesh;
 			render::material *material;
 			if (sr != nullptr) {
-				material = sr->get_material(path);
+				material = sr->get_material(light_mode);
 				if (material == nullptr)
 					continue;
 				mesh = sr->get_mesh();
+				if (mesh->dirty) {
+					gpu_mesh::instance().upload(mesh);
+					continue;
+				}
 				auto *ani = (animator *)go->get_component("animator");
 				if (ani) {
 					auto &pose = ani->get_current_pose();
@@ -101,10 +106,14 @@ level::cull(camera *cam, std::vector<draw_object> &list, render_pass::path path)
 					list.emplace_back(go->transform, mesh, material);
 				}
 			} else {
-				material = mr->get_material(path);
+				material = mr->get_material(light_mode);
 				if (material == nullptr)
 					continue;
 				mesh = mf->get_mesh();
+				if (mesh->dirty) {
+					gpu_mesh::instance().upload(mesh);
+					continue;
+				}
 				list.emplace_back(go->transform, mesh, material);
 			}
 		#if IS_EDITOR
@@ -112,6 +121,14 @@ level::cull(camera *cam, std::vector<draw_object> &list, render_pass::path path)
 		#endif
 		}
 	}
+	std::sort(list.begin(), list.end(), [](draw_object &a, draw_object &b) {
+		if (a.material < b.material)
+			return true;
+		else if (a.material == b.material)
+			return a.mesh < b.mesh;
+		else
+			return false;
+	});
 }
 
 void

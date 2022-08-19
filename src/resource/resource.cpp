@@ -36,6 +36,7 @@ namespace resource {
 static std::unordered_map<std::string, std::shared_ptr<render::material>> mat_pool;
 static std::unordered_map<std::string, std::shared_ptr<render::texture>> tex_pool;
 static std::unordered_map<std::string, std::shared_ptr<render::mesh>> mesh_pool;
+static std::unordered_map<std::string, std::shared_ptr<render::shader>> shader_pool;
 
 void
 init()
@@ -317,7 +318,7 @@ std::shared_ptr<render::shader>
 load_shader(const std::string &file)
 {
 	static struct stage {
-		std::string type;
+		std::string name;
 		render::shader::stage stage;
 	} stages[] = {
 		{"vert", render::shader::stage::VERTEX},
@@ -326,19 +327,65 @@ load_shader(const std::string &file)
 		{"geom", render::shader::stage::GEOMETRY},
 		{"frag", render::shader::stage::FRAGMENT},
 	};
-	std::vector<engine::render::shader::code> codes;
+	auto &shader = shader_pool[file];
+	if (shader != nullptr)
+		return shader;
+	std::vector<engine::render::shader::stage_code> codes;
+	YAML::Node root = YAML::LoadFile(file)["shader"];
+	//stage files
+	auto stage_files = root["stages"];
 	codes.reserve(sizeof(stages) / sizeof(stages[0]));
-	for (auto &sf:stages) {
-		auto path = file + "." + sf.type + ".spv";
-		auto spv = engine::utils::file::read(path);
-		if (spv) {
-			auto &x = codes.emplace_back();
-			x.name = sf.type;
-			x.stage = sf.stage;
-			x.spv = *spv;
+	for (int i = 0; i < sizeof(stages)/sizeof(stages[0]); i++) {
+		auto &stage = stages[i];
+		auto path = stage_files[stage.name];
+		if (path) {
+			auto spv = engine::utils::file::read(path.as<std::string>());
+			if (spv) {
+				auto &x = codes.emplace_back();
+				x.name = stage.name;
+				x.stage = stage.stage;
+				x.spv = *spv;
+			}
 		}
-	};
-	return std::shared_ptr<render::shader>(render::shader::create(codes));
+	}
+	auto *s = render::shader::create(codes);
+	//settings
+	auto settings = root["settings"];
+	if (settings) {
+		for (auto it = settings.begin(); it != settings.end(); ++it) {
+			auto type = it->first.as<std::string>();
+			auto value = it->second.as<std::string>();
+			if (type == "zwrite") {
+				s->zwrite = value == "on";
+			} else if (type == "ztest") {
+				s->ztest = value == "on";
+			} else if (type == "light_mode") {
+				if (value == "shadow_caster")
+					s->light_mode = render::shader::light_mode::SHADOWCASTER;
+				else if (value == "forward")
+					s->light_mode = render::shader::light_mode::FORWARD;
+			}
+		}
+	}
+	auto properties = root["properties"];
+	if (properties) {
+		for (int i = 0; i < properties.size(); i++) {
+			auto n = properties[i];
+			auto name = n["name"].as<std::string>();
+			auto type = n["type"].as<std::string>();
+			render::shader::prop_type vtype;
+			if (type == "texture2d")
+				vtype = render::shader::prop_type::TEXTURE2D;
+			else if (type == "float")
+				vtype = render::shader::prop_type::FLOAT;
+			else if (type == "int")
+				vtype = render::shader::prop_type::INT;
+			else
+				assert(type.c_str() == nullptr);
+			s->add_prop(name, vtype);
+		}
+	}
+	return std::shared_ptr<render::shader>(s);
 }
 
 std::shared_ptr<render::material>
@@ -349,20 +396,10 @@ load_material(const std::string &file)
 		return mat;
 	render_pass::path path;
 	YAML::Node root = YAML::LoadFile(file);
-	bool ztest = true;
-	if (root["ztest"])
-		ztest = root["ztest"].as<std::string>() == "on";
-	auto render_path = root["render_path"].as<std::string>();
-	if (render_path == "forward")
-		path = render_pass::FORWARD;
-	else if (render_path == "shadow")
-		path = render_pass::SHADOW;
-	else
-		assert(!"unsupport render path");
 	auto shader_file = root["shader_file"].as<std::string>();
-	std::cout << root["render_queue"].as<std::string>() << shader_file << std::endl;
 	auto shader = load_shader(shader_file);
-	auto *m = render::material::create(path, shader, ztest);
+	auto *m = new render::material();
+	m->set_shader(shader);
 	mat.reset(m);
 	auto params = root["shader_params"];
 	for (int i = 0; i < params.size(); i++) {
@@ -409,7 +446,8 @@ load_mesh(const std::string &file)
 	if (pScene == nullptr)
 		return std::shared_ptr<render::mesh>(nullptr);
 	const aiMesh* paiMesh = pScene->mMeshes[0];
-	auto *mesh = render::mesh::create();
+	auto *mesh = new render::mesh();
+	mesh->name = file;
 	mesh->vertices.reserve(paiMesh->mNumVertices);
 	mesh->uv.reserve(paiMesh->mNumVertices);
 	mesh->triangles.reserve(paiMesh->mNumFaces);
@@ -582,18 +620,13 @@ parse_transform(transform *tf, YAML::Node n)
 	auto rn = n["rotation"];
 	auto sn = n["scale"];
 
-	tf->position = parse_vector3f(pn);
+	tf->set_position(parse_vector3f(pn));
 
 	float x = rn["x"].as<float>();
 	float y = rn["y"].as<float>();
 	float z = rn["z"].as<float>();
-	tf->rotation.from_euler(x, y, z);
-
-	tf->scale = parse_vector3f(sn);
-
-	tf->local_position = tf->position;
-	tf->local_rotation = tf->rotation;
-	tf->local_scale = tf->scale;
+	tf->set_euler_angles(x, y, z);
+	tf->set_scale(parse_vector3f(sn));
 }
 
 static void

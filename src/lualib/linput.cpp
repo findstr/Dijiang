@@ -27,7 +27,7 @@ lgetkey(lua_State *L)
 {
 	int upval = KEY_NONE;
 	int key = luaL_checkinteger(L, 1);
-	auto action = engine::input::get_key((engine::input::key_code)key);
+	auto action = engine::input::inst().get_key((engine::input::key_code)key);
 	switch (action) {
         case engine::input::key_action::DOWN:
 		upval = KEY_DOWN;
@@ -46,7 +46,7 @@ lgetkey(lua_State *L)
 static int
 ltouchcount(lua_State *L) 
 {
-	int count = engine::input::touch_count();
+	int count = engine::input::inst().touch_count();
 	lua_pushinteger(L, count);
 	return 1;
 }
@@ -97,7 +97,7 @@ ltouchinfo(lua_State *L)
 {
 	engine::input::touch t;
 	int index = luaL_checkinteger(L, 1);
-	engine::input::touch_get(index, &t);
+	engine::input::inst().touch_get(index, &t);
 	set_table(L, 2, TOUCH_FINTERID, t.finger_id);
 	set_kv(L, 2, TOUCH_PHASE, phase_to_id(t.phase));
 	set_table(L, 2, TOUCH_POS_X, t.position.x());

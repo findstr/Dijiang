@@ -7,6 +7,7 @@ struct vsin {
 	float3 tangent : TANGENT0;
 	float3 normal : NORMAL0;
 	float2 uv : TEXCOORD0;
+	uint instanceId : SV_InstanceID;
 };
 
 struct vsout {
@@ -25,6 +26,7 @@ vsout vert(vsin input) {
 	vsout output;
 	float3 pos =  input.position;
 	float4x4 vp = mul(engine_matrix_proj,  engine_matrix_view);
+	float4x4 engine_matrix_model = engine_bindless_objects[input.instanceId].engine_matrix_model;
 	float4x4 mvp = mul(engine_matrix_proj, mul(engine_matrix_view, engine_matrix_model));
 	output.pos = mul(mvp, float4(pos, 1.0));
 	output.color = input.color;

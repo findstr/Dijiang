@@ -15,11 +15,11 @@ public:
 	~camera();
 public:
 	const std::string name() override { return "camera"; }
-	vector3f up() { return transform->rotation * vector3f(0, 1, 0); }
-	vector3f left() { return transform->rotation * vector3f(-1, 0, 0); }
-	vector3f right() { return transform->rotation * vector3f(1, 0, 0); }
-	vector3f forward() { return transform->rotation * vector3f(0, 0, 1); }
-	vector3f back() { return transform->rotation * vector3f(0, 0, -1); }
+	vector3f up() { return transform->rotation() * vector3f(0, 1, 0); }
+	vector3f left() { return transform->rotation() * vector3f(-1, 0, 0); }
+	vector3f right() { return transform->rotation() * vector3f(1, 0, 0); }
+	vector3f forward() { return transform->rotation() * vector3f(0, 0, 1); }
+	vector3f back() { return transform->rotation() * vector3f(0, 0, -1); }
 public:
 	void reg();
 	void unreg();

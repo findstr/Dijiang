@@ -288,7 +288,6 @@ vk_swapchain::framebuffer() const
 vk_swapchain::acquire_result
 vk_swapchain::acquire()
 {
-	vk_ctx_frame_begin();
 	auto &sem = sems[VK_CTX.frame_index];
 	vkWaitForFences(VK_CTX.device, 1, &sem.fence, VK_TRUE, UINT64_MAX);
 	auto result = vkAcquireNextImageKHR(VK_CTX.device,

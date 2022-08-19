@@ -43,8 +43,8 @@ light::get_shadow_matrix(camera *cam, vector3f &center, glm::mat4 &view, glm::ma
 	vector3f camera_right = cam->right();
 	vector3f camera_forward = cam->forward();
 
-	vector3f center_near = cam->transform->position + camera_forward * cam->clip_near_plane;
-	vector3f center_far = cam->transform->position + camera_forward * cam->clip_far_plane;
+	vector3f center_near = cam->transform->position() + camera_forward * cam->clip_near_plane;
+	vector3f center_far = cam->transform->position() + camera_forward * cam->clip_far_plane;
 	center = (center_near + center_far) * 0.5f;
 
 	vector3f left_top_near = center_near + camera_up * h_near / 2.0f - camera_right * w_near / 2.0f;
@@ -59,7 +59,7 @@ light::get_shadow_matrix(camera *cam, vector3f &center, glm::mat4 &view, glm::ma
 
 #define extract(a) a.x(), a.y(), a.z()
 	auto eye_dir = center + this->direction();
-	auto up = this->transform->rotation * vector3f::up();
+	auto up = this->transform->rotation() * vector3f::up();
 	view = glm::lookAt(
 			glm::vec3(extract(center)),
 			glm::vec3(extract(eye_dir)),

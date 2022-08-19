@@ -54,7 +54,7 @@ private:
 			int need = offset + count * elem_size;
 			if (need > buffer.size) {
 				buffer.destroy();
-				buffer.create(vk_buffer::DYNAMIC, need);
+				buffer.create(vk_buffer::UNIFORM_DYNAMIC, need);
 				refresh(buffer, elem_size, frame_index);
 			}
 		}

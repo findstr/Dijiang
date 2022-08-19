@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "math/math.h"
@@ -35,14 +36,14 @@ lsetlocalpos(lua_State *L)
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float z = luaL_checknumber(L, 4);
-	to_go(L, 1)->transform.local_position = vector3f(x, y, z);
+	to_go(L, 1)->transform.set_local_position(vector3f(x, y, z));
 	return 0;
 }
 
 static int
 lgetlocalpos(lua_State *L)
 {
-	vector3f pos = to_go(L, 1)->transform.local_position;
+	vector3f pos = to_go(L, 1)->transform.local_position();
 	lua_pushnumber(L, pos.x());
 	lua_pushnumber(L, pos.y());
 	lua_pushnumber(L, pos.z());
@@ -55,14 +56,16 @@ lsetlocalrot(lua_State *L)
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float z = luaL_checknumber(L, 4);
-	to_go(L, 1)->transform.local_rotation.from_euler(x, y, z);
+	quaternion rot;
+	rot.from_euler(x, y, z);
+	to_go(L, 1)->transform.set_local_rotation(rot);
 	return 0;
 }
 
 static int
 lgetlocalrot(lua_State *L)
 {
-	vector3f angles = to_go(L, 1)->transform.local_rotation.to_euler();
+	vector3f angles = to_go(L, 1)->transform.local_rotation().to_euler();
 	lua_pushnumber(L, angles.x());
 	lua_pushnumber(L, angles.y());
 	lua_pushnumber(L, angles.z());
@@ -76,17 +79,15 @@ lsetlocalquaternion(lua_State *L)
 	float y = luaL_checknumber(L, 3);
 	float z = luaL_checknumber(L, 4);
 	float w = luaL_checknumber(L, 5);
-	to_go(L, 1)->transform.local_rotation.x() = x;
-	to_go(L, 1)->transform.local_rotation.y() = y;
-	to_go(L, 1)->transform.local_rotation.z() = z;
-	to_go(L, 1)->transform.local_rotation.w() = w;
+	quaternion rot(x,y,z,w);
+	to_go(L, 1)->transform.set_local_rotation(rot);
 	return 0;
 }
 
 static int
 lgetlocalquaternion(lua_State *L) 
 {
-	auto &quat = to_go(L, 1)->transform.local_rotation;
+	auto &quat = to_go(L, 1)->transform.local_rotation();
 	lua_pushnumber(L, quat.x());
 	lua_pushnumber(L, quat.y());
 	lua_pushnumber(L, quat.z());
@@ -98,20 +99,19 @@ static int
 lsetquaternion(lua_State *L) 
 {
 	auto &trans = to_go(L, 1)->transform;
-	quaternion &q= trans.rotation;
-	quaternion old = q;
+	quaternion q;
 	q.x() = luaL_checknumber(L, 2);
 	q.y() = luaL_checknumber(L, 3);
 	q.z() = luaL_checknumber(L, 4);
 	q.w() = luaL_checknumber(L, 5);
-	trans.local_rotation =  q * old.inverse();
+	trans.set_rotation(q);
 	return 0;
 }
 
 static int
 lgetquaternion(lua_State *L) 
 {
-	auto &quat = to_go(L, 1)->transform.rotation;
+	auto &quat = to_go(L, 1)->transform.rotation();
 	lua_pushnumber(L, quat.x());
 	lua_pushnumber(L, quat.y());
 	lua_pushnumber(L, quat.z());
@@ -128,7 +128,8 @@ lrotate(lua_State *L)
 	float z = luaL_checknumber(L, 4);
 	quaternion q;
 	q.from_euler(x, y, z);
-	to_go(L, 1)->transform.rotation *= q;
+	auto &trans = to_go(L, 1)->transform;
+	trans.set_rotation(q * trans.rotation());
 	return 0;
 }
 
@@ -139,7 +140,7 @@ lmove(lua_State *L)
 	float y = luaL_checknumber(L, 3);
 	float z = luaL_checknumber(L, 4);
 	auto &trans = to_go(L, 1)->transform;
-	trans.position = trans.position + vector3f(x, y, z);
+	trans.set_position(trans.position() + vector3f(x, y, z));
 	return 0;
 }
 
@@ -149,14 +150,14 @@ lsetlocalscale(lua_State *L)
 	float x = luaL_checknumber(L, 2);
 	float y = luaL_checknumber(L, 3);
 	float z = luaL_checknumber(L, 4);
-	to_go(L, 1)->transform.scale = vector3f(x, y, z);
+	to_go(L, 1)->transform.set_scale(vector3f(x, y, z));
 	return 0;
 }
 
 static int
 lgetlocalscale(lua_State *L)
 {
-	vector3f scale = to_go(L, 1)->transform.scale;
+	vector3f scale = to_go(L, 1)->transform.scale();
 	lua_pushnumber(L, scale.x());
 	lua_pushnumber(L, scale.y());
 	lua_pushnumber(L, scale.z());

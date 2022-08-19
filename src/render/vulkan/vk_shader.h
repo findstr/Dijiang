@@ -8,6 +8,7 @@
 #include "render/shader.h"
 #include "render/vertex.h"
 #include "spirv_cross.hpp"
+#include "vk_pipeline.h"
 
 namespace engine {
 namespace vulkan {
@@ -54,41 +55,35 @@ private:
 	std::vector<image> images;
 	std::vector<sampler> samplers;
 	std::unordered_map<std::string, VkShaderStageFlags> var_stages;
-	VkDescriptorSetLayout desc_set_layout_ = VK_NULL_HANDLE;
 public:
 	vertex vertex_input;
 	std::vector<shader_inst> modules;
-	VkDescriptorSetLayout desc_set_layout() const {
-		return desc_set_layout_;
-	}
-	const buffer * find_buffer(const std::string &name);
-	const image *find_image(const std::string &name);
-	const sampler *find_sampler(const std::string &name);
+	vk_pipeline &pipeline(VkRenderPass render_pass, bool enable_msaa);
 public:
-	vk_shader(const std::vector<render::shader::code> &stages);
+	vk_shader(const std::vector<render::shader::stage_code> &stages);
 	~vk_shader();
 private:
-	void analyze_uniform_buffers(
-		spirv_cross::Compiler &compiler,
-		spirv_cross::ShaderResources &resources,
-		VkShaderStageFlags stageflags);
-	void analyze_storage_buffers(
-		spirv_cross::Compiler &compiler,
-		spirv_cross::ShaderResources &resources,
-		VkShaderStageFlags stageflags);
 	void analyze_vertex_input(
 		spirv_cross::Compiler &compiler,
 		spirv_cross::ShaderResources &resources,
 		VkShaderStageFlags stageflags);
-	void analyze_images(
-		spirv_cross::Compiler &compiler,
-		spirv_cross::ShaderResources &resources,
-		VkShaderStageFlags stageflags);
-	void analyze_samplers(
-		spirv_cross::Compiler &compiler,
-		spirv_cross::ShaderResources &resources,
-		VkShaderStageFlags stageflags);
-	void build_desc_set_layout();
+	struct pipeline_cache {
+		VkRenderPass renderpass = VK_NULL_HANDLE;
+		vk_pipeline *pipeline = nullptr;
+		pipeline_cache(pipeline_cache &&other) {
+			renderpass = other.renderpass;
+			pipeline = other.pipeline;
+			other.renderpass = VK_NULL_HANDLE;
+			other.pipeline = nullptr;
+		}
+		pipeline_cache(VkRenderPass rp, vk_pipeline *pl) :
+			renderpass(rp), pipeline(pl) {}
+		~pipeline_cache() {
+			if (pipeline != nullptr)
+				delete pipeline;
+		}
+	};
+	std::vector<pipeline_cache> pipelines;
 };
 
 }}

@@ -4,6 +4,7 @@ struct VSInput {
 	float3 inPosition : POSITION0;
 	float3 inColor : COLOR0;
 	float2 inTexCoord : TEXCOORD0;
+	uint instanceId : SV_InstanceID;
 };
 
 struct VSOutput {
@@ -17,6 +18,7 @@ VSOutput vert(VSInput input) {
 	v[0][3] = 0;
 	v[1][3] = 0;
 	v[2][3] = 0;
+	float4x4 engine_matrix_model = engine_bindless_objects[input.instanceId].engine_matrix_model;
 	output.pos = mul(engine_matrix_proj, mul(v, mul(engine_matrix_model, float4(input.inPosition, 1.0))));
 	output.fragTexCoord = input.inPosition;
 	output.pos.z = output.pos.w * 0.999999;

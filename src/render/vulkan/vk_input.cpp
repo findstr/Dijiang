@@ -1,105 +1,122 @@
 #include <assert.h>
+#include <SDL.h>
 #include "math/math.h"
 #include "vk_input.h"
 
 namespace engine {
-namespace input {
+namespace vulkan {
 
-static GLFWwindow *window = nullptr;
-static bool mouse_press = false;
-static touch touch_data; 
-float x_offset = 0.0f;
-float y_offset = 0.0f;
-vector2f mouse_position = vector2f(0, 0);
-
-static void 
-glfw_scroll_func(GLFWwindow* window, double xoffset, double yoffset)
+vk_input &
+vk_input::inst()
 {
-	x_offset = xoffset;
-	y_offset = yoffset;
+	static vk_input input;
+	return input;
+}
+	
+vk_input::key_code
+vk_input::to_key_code(SDL_Keycode code)
+{
+	switch (code) {
+	case SDLK_a:
+		return key_code::A;
+	case SDLK_s:
+		return key_code::S;
+	case SDLK_d:
+		return key_code::D;
+	case SDLK_w:
+		return key_code::W;
+	default:
+		return key_code::A;
+	}
+}
+	
+vk_input::mouse_button 
+vk_input::to_mouse_button(int mouse_index)
+{
+	switch (mouse_index) {
+	case SDL_BUTTON_LEFT:
+		return mouse_button::LEFT;
+	case SDL_BUTTON_MIDDLE:
+		return mouse_button::MIDDLE;
+	case SDL_BUTTON_RIGHT:
+		return mouse_button::RIGHT;
+	default:
+		return mouse_button::NONE;
+	}
+}	
+
+void 
+vk_input::update_mouse_position(SDL_Window *w)
+{
+	int x, y;
+	int height, width;
+	SDL_GetMouseState(&x, &y);
+	SDL_GetWindowSize(w, &width, &height);
+	y = height - y;
+	mouse_position.x() = (float)x / width;
+	mouse_position.y() = (float)y / height;
 }
 
 void
-init(GLFWwindow *win)
+vk_input::process(SDL_Window *w, SDL_Event &e, float delta)
 {
-	window = win;
-	glfwSetScrollCallback(window, glfw_scroll_func);
+	switch (e.type) {
+	case SDL_MOUSEMOTION:
+		update_mouse_position(w);
+		break;
+	case SDL_MOUSEBUTTONDOWN:
+		update_mouse_position(w);
+		mouse_button_status[(int)to_mouse_button(e.button.button)] = true;
+		if (mouse_press == false) {
+			mouse_press = true;
+			touch_data.phase = touch_phase::BEGAN;
+			touch_data.position = mouse_position;
+			touch_data.delta_time = delta;
+			touch_data.delta_position = vector2f(0, 0);
+		}
+		break;
+	case SDL_MOUSEBUTTONUP:
+		update_mouse_position(w);
+		mouse_button_status[(int)to_mouse_button(e.button.button)] = false;
+		if (mouse_press) {
+			mouse_press = false;
+			touch_data.phase = touch_phase::ENDED;
+		}
+		break;
+	case SDL_KEYDOWN:
+		key_status[(int)to_key_code(e.key.keysym.sym)] = key_action::DOWN;
+		break;
+	case SDL_KEYUP:
+		key_status[(int)to_key_code(e.key.keysym.sym)] = key_action::UP;
+		break;
+	};
 }
 
-void 
-update(float delta)
+void
+vk_input::tick(float delta)
 {
-	auto press = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-	if (press == GLFW_PRESS && mouse_press == false) {
-		mouse_press = true;
-		touch_data.phase = touch_phase::BEGAN;
-		double x, y;
-		int height, width;
-		glfwGetCursorPos(window, &x, &y);
-		glfwGetWindowSize(window, &height, &width);
-		y = height - y;
-		x /= width;
-		y /= height;
-		touch_data.position = vector2f(x, y);
-	} else if (press == GLFW_RELEASE && mouse_press == true) {
-		mouse_press = false;
-		touch_data.phase = touch_phase::ENDED;
-	} else if (press && mouse_press) {
-		double x, y;
-		int height, width;
-		glfwGetCursorPos(window, &x, &y);
-		glfwGetWindowSize(window, &height, &width);
-		y = height - y;
-		x /= width;
-		y /= height;
+	if (mouse_press) {
 		touch_data.phase = touch_phase::MOVED;
-		vector2f pos =  vector2f(x, y);
-		touch_data.delta_position = pos - touch_data.position;
+		touch_data.delta_position = mouse_position - touch_data.position;
+		touch_data.position = mouse_position;
 		touch_data.delta_time = delta;
-		touch_data.position = pos;
 	}
 }
 
-key_action
-get_key(key_code key)
+vk_input::key_action
+vk_input::get_key(key_code key)
 {
-	int state = GLFW_RELEASE;
-	switch (key) {
-	case key_code::A:
-		state = glfwGetKey(window, GLFW_KEY_A);
-		break;
-	case key_code::S:
-		state = glfwGetKey(window, GLFW_KEY_S);
-		break;
-	case key_code::D:
-		state = glfwGetKey(window, GLFW_KEY_D);
-		break;
-	case key_code::W:
-		state = glfwGetKey(window, GLFW_KEY_W);
-		break;
-	default:
-		assert(!"unsupport key code");
-	break;
-	}
-	switch (state) {
-        case GLFW_PRESS:
-        case GLFW_REPEAT:
-		return key_action::DOWN;
-        case GLFW_RELEASE:
-		return key_action::UP;
-        default:
-		return key_action::NONE;
-	}
+	return key_status[(int)key];
 }
 
 int 
-touch_count()
+vk_input::touch_count()
 {
 	return touch_data.phase == touch_phase::ENDED ? 0 : 1;
 }
 
 void
-touch_get(int index, struct touch *t) 
+vk_input::touch_get(int index, struct touch *t) 
 {
 	assert(index == 0);
 	*t = touch_data;
@@ -107,7 +124,7 @@ touch_get(int index, struct touch *t)
 }
 
 float
-mouse_scroll_delta()
+vk_input::mouse_scroll_delta()
 {
 	float y = y_offset;
 	y_offset = 0.0f;
@@ -115,31 +132,15 @@ mouse_scroll_delta()
 }
 
 bool 
-mouse_get_button(int button)
+vk_input::mouse_get_button(mouse_button button)
 {
-	switch (button) {
-	case 0:
-		return glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-	case 1:
-		return glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS;
-	case 2:
-		return glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
-	default:
-		return false;
-	}
+	return mouse_button_status[(int)button];
 }
 
 vector2f
-mouse_get_position()
+vk_input::mouse_get_position()
 {
-	double x, y;
-	int height, width;
-	glfwGetCursorPos(window, &x, &y);
-	glfwGetWindowSize(window, &height, &width);
-	y = height - y;
-	x /= width;
-	y /= height;
-	return vector2f(x, y);
+	return mouse_position;
 }
 
 

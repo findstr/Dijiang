@@ -19,6 +19,7 @@ cmdbuf_single_begin()
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	vkBeginCommandBuffer(commandBuffer, &beginInfo);
 	return commandBuffer;
+	return VK_CTX.cmdbuf;
 }
 void
 cmdbuf_single_end(VkCommandBuffer commandBuffer)
@@ -34,6 +35,7 @@ cmdbuf_single_end(VkCommandBuffer commandBuffer)
 	vkQueueWaitIdle(VK_CTX.graphicsqueue);
 
 	vkFreeCommandBuffers(VK_CTX.device, VK_CTX.commandpool, 1, &commandBuffer);
+	vkQueueWaitIdle(VK_CTX.graphicsqueue);
 }
 
 

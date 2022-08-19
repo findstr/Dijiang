@@ -6,6 +6,7 @@ struct texture_filter {
 		POINT = 0,
 		BILINEAR = 1,
 		TRILINEAR = 2,
+		COUNT,
 	};
 	texture_filter() = default;
 	constexpr texture_filter(value v) : value_(v) {}

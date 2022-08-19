@@ -8,16 +8,20 @@
 #include <vulkan/vulkan.hpp>
 #include "render/lighting_asset.h"
 #include "../../asset/shaders/include/engine_constant.inc.hlsl"
+#include "vk_shader_variables.h"
 #include "vk_mem_alloc.h"
+#include "vk_sampler_pool.h"
 #include "vk_shader_variables.h"
 
 #include "conf.h"
+#include "render/ubo.h"
 #include "vk_native.h"
 #include "vk_surface.h"
 #include "vk_texture.h"
 #include "vk_render_texture.h"
 #include "vk_ctx.h"
 #include <math/math.h>
+#include "vk_set_write.h"
 
 namespace engine {
 namespace vulkan {
@@ -126,7 +130,7 @@ void setup_debug_callback(VkInstance instance, VkDebugReportCallbackEXT *pCallba
 
 
 static VkInstance
-create_instance(const char *name, int major, int minor, surface *s)
+create_instance(const char *name, int major, int minor)
 {
 	VkInstance instance;
 	if (enableValidationLayers && !check_validation_layer_support()) {
@@ -146,7 +150,7 @@ create_instance(const char *name, int major, int minor, surface *s)
 	createinfo.pApplicationInfo = &appinfo;
         //createinfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 
-	auto extensions = surface_required_extensions(s);
+	auto extensions = vk_surface::inst().required_extensions();
 	//extensions.emplace_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 	createinfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 	createinfo.ppEnabledExtensionNames = extensions.data();
@@ -220,9 +224,20 @@ isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 		auto swapChainSupport = vk_swapchain::query_support(device, surface);
 		swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
 	}
+	VkPhysicalDeviceShaderDrawParametersFeatures shader_draw_parameters_features = {};
+	shader_draw_parameters_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+	shader_draw_parameters_features.pNext = nullptr;
+	VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{ 
+		VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, 
+		&shader_draw_parameters_features,
+	};
 	VkPhysicalDeviceFeatures supportedFeatures;
+	VkPhysicalDeviceFeatures2 supportedFeatures2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexing_features};
 	vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
-	return VK_CTX.graphicsfamily >= 0 && VK_CTX.presentfamily >= 0 && extSupport && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+	vkGetPhysicalDeviceFeatures2(device, &supportedFeatures2);
+	auto bindless_support = indexing_features.descriptorBindingPartiallyBound && indexing_features.runtimeDescriptorArray;
+	bool shadow_draw_parameters_support = shader_draw_parameters_features.shaderDrawParameters == VK_TRUE;
+	return VK_CTX.graphicsfamily >= 0 && VK_CTX.presentfamily >= 0 && extSupport && swapChainAdequate && supportedFeatures.samplerAnisotropy && bindless_support && shadow_draw_parameters_support;
 }
 
 
@@ -263,19 +278,29 @@ createLogicalDevice(VkPhysicalDevice physicalDevice,
 		x.pQueuePriorities = &queuePriority;
 	}
 
-	VkPhysicalDeviceFeatures deviceFeature = {};
-	deviceFeature.samplerAnisotropy = VK_TRUE;
-
+	VkPhysicalDeviceFeatures2 deviceFeatures2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    	VkPhysicalDeviceShaderDrawParametersFeatures shader_draw_parameters_features = {};
+    	shader_draw_parameters_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+    	shader_draw_parameters_features.pNext = nullptr;
+    	shader_draw_parameters_features.shaderDrawParameters = VK_TRUE;
+	VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, &shader_draw_parameters_features};
+	indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
+	indexing_features.runtimeDescriptorArray = VK_TRUE;
+	VkPhysicalDeviceFeatures2 supportedFeatures2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &indexing_features};
+	vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
+	vkGetPhysicalDeviceFeatures2(physicalDevice, &supportedFeatures2);
+	deviceFeatures2.features.samplerAnisotropy = VK_TRUE;
+	deviceFeatures2.pNext = &indexing_features;
 	VkDeviceCreateInfo deviceCreate = {};
 	deviceCreate.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreate.queueCreateInfoCount =
 			static_cast<uint32_t>(queueCreate.size());
 	deviceCreate.pQueueCreateInfos = queueCreate.data();
-	deviceCreate.pEnabledFeatures = &deviceFeature;
+	deviceCreate.pEnabledFeatures = VK_NULL_HANDLE;
 	deviceCreate.enabledExtensionCount =
 			static_cast<uint32_t>(deviceExtensions.size());
 	deviceCreate.ppEnabledExtensionNames = deviceExtensions.data();
-
+	deviceCreate.pNext = &deviceFeatures2;
 	if (enableValidationLayers) {
 		deviceCreate.enabledLayerCount =
 				static_cast<uint32_t>(validationLayers.size());
@@ -297,7 +322,7 @@ static VkDescriptorPool
 createDescriptorPool(VkDevice device)
 {
 	VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-	std::array<VkDescriptorPoolSize, 4> poolSize{};
+	std::array<VkDescriptorPoolSize, 5> poolSize{};
 	poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSize[0].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100);
 	poolSize[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -306,9 +331,12 @@ createDescriptorPool(VkDevice device)
 	poolSize[2].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100);
 	poolSize[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	poolSize[3].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100);
+	poolSize[4].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSize[4].descriptorCount = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100);
 
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
 	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSize.size());
 	poolInfo.pPoolSizes = poolSize.data();
 	poolInfo.maxSets = static_cast<uint32_t>(conf::MAX_FRAMES_IN_FLIGHT * 100); //TODO:
@@ -444,6 +472,171 @@ create_engine_descriptor_set()
 	result = vkAllocateDescriptorSets(
 		CTX.device, &dsa, CTX.engine_desc_set);
 	assert(result == VK_SUCCESS);
+
+	////////////////////////////////////////////////////////
+	{
+	VkDescriptorBindingFlags bindless_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | 
+		VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT | \
+		VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT;
+	VkDescriptorSetLayoutBinding vk_binding;
+	vk_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	vk_binding.descriptorCount = conf::MAX_BINDLESS_RESOURCE;
+	vk_binding.binding = ENGINE_BINDLESS_TEXTURE_BINDING;
+	vk_binding.stageFlags = VK_SHADER_STAGE_ALL;
+	vk_binding.pImmutableSamplers = nullptr;
+	
+	VkDescriptorSetLayoutCreateInfo layout_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	layout_info.bindingCount = 1;
+	layout_info.pBindings = &vk_binding;
+	layout_info.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
+	
+	VkDescriptorSetLayoutBindingFlagsCreateInfoEXT extended_info { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT, nullptr };
+	extended_info.bindingCount = 1;
+	extended_info.pBindingFlags = &bindless_flags;
+
+	layout_info.pNext = &extended_info;
+
+	auto ret = vkCreateDescriptorSetLayout(CTX.device, &layout_info, nullptr, &CTX.engine_bindless_texture_layout);
+	VkDescriptorSetAllocateInfo alloc_info { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	alloc_info.descriptorPool = VK_CTX.descriptorpool;
+	alloc_info.descriptorSetCount = 1;
+	alloc_info.pSetLayouts = &VK_CTX.engine_bindless_texture_layout;
+
+	VkDescriptorSetVariableDescriptorCountAllocateInfoEXT count_info { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT };
+	uint32_t max_binding_id = conf::MAX_BINDLESS_RESOURCE - 1;
+	count_info.descriptorSetCount = 1;
+	count_info.pDescriptorCounts = &max_binding_id;
+	
+	alloc_info.pNext = &count_info;
+	ret = vkAllocateDescriptorSets(CTX.device, &alloc_info, &CTX.engine_bindless_texture_set);
+	}
+	{
+	VkDescriptorBindingFlags bindless_flags =
+		VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | 
+		VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT | \
+		VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT;
+	VkDescriptorSetLayoutBinding vk_binding;
+	vk_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	vk_binding.descriptorCount = conf::MAX_BINDLESS_RESOURCE;
+	vk_binding.binding = ENGINE_BINDLESS_OBJECT_BINDING;
+	vk_binding.stageFlags = VK_SHADER_STAGE_ALL;
+	vk_binding.pImmutableSamplers = nullptr;
+	
+	VkDescriptorSetLayoutCreateInfo layout_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	layout_info.bindingCount = 1;
+	layout_info.pBindings = &vk_binding;
+	layout_info.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
+	
+	VkDescriptorSetLayoutBindingFlagsCreateInfoEXT extended_info { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT, nullptr };
+	extended_info.bindingCount = 1;
+	extended_info.pBindingFlags = &bindless_flags;
+
+	layout_info.pNext = &extended_info;
+
+	auto ret = vkCreateDescriptorSetLayout(CTX.device, &layout_info, nullptr, &CTX.engine_bindless_object_layout);
+	VkDescriptorSetAllocateInfo alloc_info { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	alloc_info.descriptorPool = VK_CTX.descriptorpool;
+	alloc_info.descriptorSetCount = 1;
+	alloc_info.pSetLayouts = &VK_CTX.engine_bindless_object_layout;
+
+	VkDescriptorSetVariableDescriptorCountAllocateInfoEXT count_info { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT };
+	uint32_t max_binding_id = conf::MAX_BINDLESS_RESOURCE - 1;
+	count_info.descriptorSetCount = 1;
+	count_info.pDescriptorCounts = &max_binding_id;
+	
+	alloc_info.pNext = &count_info;
+	for (int i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
+		CTX.engine_bindless_object[i].reset(new vk_buffer(vk_buffer::STORAGE, 1024*64));
+		ret = vkAllocateDescriptorSets(CTX.device, &alloc_info, &CTX.engine_bindless_object_set[i]);
+		assert(ret == VK_SUCCESS);
+		VkDescriptorBufferInfo bufferInfo{};
+		bufferInfo.buffer = CTX.engine_bindless_object[i]->handle;
+		bufferInfo.offset = 0;
+		bufferInfo.range = CTX.engine_bindless_object[i]->size;
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = VK_CTX.engine_bindless_object_set[i];
+		descriptorWrite.dstBinding = ENGINE_BINDLESS_OBJECT_BINDING;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		descriptorWrite.pImageInfo = nullptr;
+		descriptorWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(VK_CTX.device, 1,
+			&descriptorWrite, 0, nullptr);
+	}
+	}
+	{
+	VkDescriptorBindingFlags bindless_flags =
+		VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT | 
+		VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT | \
+		VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT;
+	VkDescriptorSetLayoutBinding vk_binding;
+	vk_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	vk_binding.descriptorCount = conf::MAX_BINDLESS_RESOURCE;
+	vk_binding.binding = ENGINE_BINDLESS_MATERIAL_BINDING;
+	vk_binding.stageFlags = VK_SHADER_STAGE_ALL;
+	vk_binding.pImmutableSamplers = nullptr;
+	
+	VkDescriptorSetLayoutCreateInfo layout_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	layout_info.bindingCount = 1;
+	layout_info.pBindings = &vk_binding;
+	layout_info.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
+	
+	VkDescriptorSetLayoutBindingFlagsCreateInfoEXT extended_info { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT, nullptr };
+	extended_info.bindingCount = 1;
+	extended_info.pBindingFlags = &bindless_flags;
+
+	layout_info.pNext = &extended_info;
+
+	auto ret = vkCreateDescriptorSetLayout(CTX.device, &layout_info, nullptr, &CTX.engine_bindless_material_layout);
+	VkDescriptorSetAllocateInfo alloc_info { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	alloc_info.descriptorPool = VK_CTX.descriptorpool;
+	alloc_info.descriptorSetCount = 1;
+	alloc_info.pSetLayouts = &VK_CTX.engine_bindless_material_layout;
+
+	VkDescriptorSetVariableDescriptorCountAllocateInfoEXT count_info { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT };
+	uint32_t max_binding_id = conf::MAX_BINDLESS_RESOURCE - 1;
+	count_info.descriptorSetCount = 1;
+	count_info.pDescriptorCounts = &max_binding_id;
+	
+	alloc_info.pNext = &count_info;
+	for (int i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
+		CTX.engine_bindless_material[i].reset(new vk_buffer(vk_buffer::STORAGE, 1024*64));
+		ret = vkAllocateDescriptorSets(CTX.device, &alloc_info, &CTX.engine_bindless_material_set[i]);
+		assert(ret == VK_SUCCESS);
+		VkDescriptorBufferInfo bufferInfo{};
+		bufferInfo.buffer = CTX.engine_bindless_material[i]->handle;
+		bufferInfo.offset = 0;
+		bufferInfo.range = CTX.engine_bindless_material[i]->size;
+		VkWriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = VK_CTX.engine_bindless_material_set[i];
+		descriptorWrite.dstBinding = ENGINE_BINDLESS_MATERIAL_BINDING;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		descriptorWrite.pImageInfo = nullptr;
+		descriptorWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(VK_CTX.device, 1,
+			&descriptorWrite, 0, nullptr);
+	}
+	}
+	{
+	VkDescriptorSetLayout layouts[] = {VK_CTX.engine_desc_set_layout, VK_CTX.engine_desc_set_layout, VK_CTX.engine_bindless_texture_layout, VK_CTX.engine_bindless_object_layout, VK_CTX.engine_bindless_material_layout};
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = sizeof(layouts) / sizeof(layouts[0]);
+	pipelineLayoutInfo.pSetLayouts = layouts;
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges = 0;
+	auto ret = vkCreatePipelineLayout(VK_CTX.device, &pipelineLayoutInfo, nullptr, &VK_CTX.engine_bindless_pipeline_layout);
+	assert(ret == VK_SUCCESS);
+	}
 }
 	
 void
@@ -463,7 +656,7 @@ vk_ctx_init_lighting()
 	for (int i = 0; i < count; i++) {
 		imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo[i].imageView = native_of(textures[i].tex).view;
-		imageInfo[i].sampler = native_of(textures[i].tex).sampler(textures[i].tex);
+		imageInfo[i].sampler = vk_sampler_pool::inst().fetch(textures[i].tex);
 	}
 	std::array<VkWriteDescriptorSet, (sizeof(textures) / sizeof(textures[0])) * 2 * conf::MAX_FRAMES_IN_FLIGHT> descriptorWrite;
 	int k = 0;
@@ -552,12 +745,12 @@ VkSampleCountFlagBits getMaxUsableSampleCount()
 }
 
 int
-vk_ctx_init(const char *name, surface *s, int width, int height)
+vk_ctx_init(const char *name, int width, int height)
 {
-	CTX.instance = create_instance(name, conf::VERSION_MAJOR, conf::VERSION_MINOR, s);
+	CTX.instance = create_instance(name, conf::VERSION_MAJOR, conf::VERSION_MINOR);
 	auto &ext = CTX;
 	setup_debug_callback(CTX.instance,  &ext.dbgcallback);
-	surface_bind(s, CTX.instance, &ext.surface);
+	vk_surface::inst().bind(CTX.instance, &ext.surface);
 	CTX.phydevice = pickPhysicalDevice(CTX.instance, ext.surface);
 	vkGetPhysicalDeviceProperties(CTX.phydevice, &CTX.properties);
 	CTX.device = createLogicalDevice(CTX.phydevice, ext.surface, &CTX.graphicsqueue, &CTX.presentqueue);
@@ -572,7 +765,7 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	cba.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	cba.commandPool = VK_CTX.commandpool;
 	cba.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cba.commandBufferCount = CTX.cmdbufs.size();;
+	cba.commandBufferCount = CTX.cmdbufs.size();
 	result = vkAllocateCommandBuffers(VK_CTX.device, &cba, CTX.cmdbufs.data());
 	if (result != VK_SUCCESS) {
 		fprintf(stderr, "[render] new_renderframe result:%d\n", result);
@@ -586,6 +779,17 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 	CTX.vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(VK_CTX.instance, "vkCmdBeginDebugUtilsLabelEXT");
 	CTX.vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(VK_CTX.instance, "vkCmdEndDebugUtilsLabelEXT");
 	CTX.msaaSamples = getMaxUsableSampleCount();
+	CTX.cmdbuf = CTX.cmdbufs[(VK_CTX.cmdbuf_index+1)%CTX.cmdbufs.size()];
+
+
+	CTX.cmdbuf = CTX.cmdbufs[VK_CTX.cmdbuf_index%CTX.cmdbufs.size()];
+	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
+	VkCommandBufferBeginInfo begin{};
+	begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin.flags = 0;
+	begin.pInheritanceInfo = nullptr;
+	auto ret = vkBeginCommandBuffer(cmdbuf, &begin);
+	assert(ret == VK_SUCCESS);
 
 	return 0;
 
@@ -594,13 +798,28 @@ vk_ctx_init(const char *name, surface *s, int width, int height)
 void
 vk_ctx_frame_begin()
 {
-	CTX.cmdbuf = CTX.cmdbufs[VK_CTX.frame_index];
+}
+
+void 
+vk_ctx_reset_cmbuf()
+{
+	vkResetCommandBuffer(CTX.cmdbufs[(VK_CTX.cmdbuf_index + 1) % CTX.cmdbufs.size()], 0);
 }
 
 void 
 vk_ctx_frame_end()
 {
 	CTX.frame_index = (CTX.frame_index + 1) % conf::MAX_FRAMES_IN_FLIGHT;
+	CTX.cmdbuf_index++;
+
+	CTX.cmdbuf = CTX.cmdbufs[VK_CTX.cmdbuf_index%CTX.cmdbufs.size()];
+	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
+	VkCommandBufferBeginInfo begin{};
+	begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin.flags = 0;
+	begin.pInheritanceInfo = nullptr;
+	auto ret = vkBeginCommandBuffer(cmdbuf, &begin);
+	assert(ret == VK_SUCCESS);
 }
 
 void

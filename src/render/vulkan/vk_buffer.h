@@ -1,6 +1,5 @@
 #pragma once
 #include "vk_mem_alloc.h"
-#include "vk_object.h"
 namespace engine {
 namespace vulkan {
 
@@ -9,10 +8,12 @@ public:
 	enum type {
 		NONE,
 		UNIFORM,
-		DYNAMIC,
+		UNIFORM_DYNAMIC,
+		STORAGE,
 		VERTEX,
 		INDEX,
 		STAGING,
+		INDIRECT,
 	};
 public:
 	vk_buffer() {}
@@ -25,6 +26,7 @@ public:
 	void destroy();
 	void upload(const void *src, size_t size);
 	void copy_from(vk_buffer *src);
+	void copy_from(vk_buffer *src, size_t srcoffset, size_t dstoffset, size_t size);
 	void copy_from(VkCommandBuffer cmdbuf, vk_buffer *src);
 public:
 	vk_buffer &operator = (vk_buffer &&b);

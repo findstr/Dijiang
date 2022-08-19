@@ -43,6 +43,24 @@ vk_buffer::copy_from(vk_buffer *src)
 	cmdbuf_single_end(commandBuffer);
 }
 
+void
+vk_buffer::copy_from(vk_buffer *src, size_t srcoffset, size_t dstoffset, size_t size)
+{
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = VK_CTX.commandpool;
+	allocInfo.commandBufferCount = 1;
+	assert((srcoffset + size) <= src->size);
+	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
+	VkBufferCopy copyRegion{};
+	copyRegion.srcOffset = srcoffset;
+	copyRegion.dstOffset = dstoffset;
+	copyRegion.size = size;
+	vkCmdCopyBuffer(commandBuffer, src->handle, handle, 1, &copyRegion);
+	cmdbuf_single_end(commandBuffer);
+}
+
 void *
 vk_buffer::map()
 {
@@ -87,8 +105,13 @@ vk_buffer::create(enum vk_buffer::type t, size_t sz)
 		bi.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		ci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
 		break;
-	case vk_buffer::type::DYNAMIC:
+	case vk_buffer::type::UNIFORM_DYNAMIC:
 		bi.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		ci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		ci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
+		break;
+	case vk_buffer::type::STORAGE:
+		bi.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		ci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 		ci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
 		break;
@@ -105,6 +128,10 @@ vk_buffer::create(enum vk_buffer::type t, size_t sz)
 	case vk_buffer::type::STAGING:
 		bi.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		ci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+		break;
+	case vk_buffer::type::INDIRECT:
+		bi.usage = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		ci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 		break;
 	default:
 		assert(!"unsupport vk_buffer type");

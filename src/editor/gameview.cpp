@@ -1,4 +1,5 @@
 #include <array>
+#include <chrono>
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "backends/imgui_impl_vulkan.h"
@@ -29,8 +30,6 @@ gameview::tick(engine *e, float delta)
 	if (!is_open)
 		return;
 	ImGui::Begin(title.c_str(), &is_open, window_flags);
-	if (ImGui::IsWindowFocused()) 
-		input::update(delta);
 	auto cameras = camera::all_cameras();
 	for (auto cam:cameras) {
 		cam->render_target = render_texture.get();

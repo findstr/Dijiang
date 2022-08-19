@@ -9,6 +9,7 @@ struct texture_wrap {
 		CLAMP = 1,
 		MIRROR = 2,
 		MIRROR_ONCE = 3,
+		COUNT,
 	};
 	texture_wrap() = default;
 	constexpr texture_wrap(value v) : value_(v) {}

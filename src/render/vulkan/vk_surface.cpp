@@ -1,48 +1,28 @@
 #include <assert.h>
 #include <memory>
+#include <iostream>
 #include <vulkan/vulkan.hpp>
-#include <GLFW/glfw3.h>
+#include <SDL.h>
+#include <SDL_Vulkan.h>
+#include <SDL_render.h>
 #include "conf.h"
 #include "imgui.h"
 #include "vk_ctx.h"
 #include "vk_native.h"
 #include "render_pass.h"
-#include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
+#include "backends/imgui_impl_sdl.h"
 #include "vk_input.h"
 #include "vk_surface.h"
 
 namespace engine {
 namespace vulkan {
 
-struct surface {
-	GLFWwindow *window = nullptr;
-	VkRenderPass render_pass;
-};
-
-std::vector<const char *>
-surface_required_extensions(surface *s)
-{
-	(void)s;
-	std::vector<const char *> extensions;
-	unsigned int glfwExtensionCount = 0;
-	const char **glfwExtensions;
-	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-	for (unsigned int i = 0; i < glfwExtensionCount; i++) {
-		extensions.push_back(glfwExtensions[i]);
-	}
-	if (conf::enable_validate) {
-		extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-	}
-	return extensions;
-}
-
-
-static void
-window_resized(GLFWwindow *win, int width, int height) {
-	auto s = reinterpret_cast<surface *>(glfwGetWindowUserPointer(win));
-	//TODO:
-}
+struct {
+	SDL_Window *window;
+	SDL_Renderer *render;
+} S;
+	
 
 static void
 imgui_check_vk_result(VkResult err)
@@ -55,10 +35,10 @@ imgui_check_vk_result(VkResult err)
 }
 
 static float 
-get_content_scale(surface *s) 
+get_content_scale() 
 {
 	float x_scale, y_scale;
-	glfwGetWindowContentScale(s->window, &x_scale, &y_scale);
+	SDL_RenderGetScale(S.render, &x_scale, &y_scale);
 	return fmaxf(1.0f, fmaxf(x_scale, y_scale));
 }
 
@@ -71,13 +51,9 @@ window_content_scale_update(float sacle)
 #endif
 }
 
-static void
-window_content_scale_callback(GLFWwindow *window, float x_scale, float y_scale)
-{
-	window_content_scale_update(fmaxf(x_scale, y_scale));
-}
 
-void imgui_set_default_style()
+static void
+imgui_set_default_style()
 {
     ImGuiStyle* style  = &ImGui::GetStyle();
     ImVec4*     colors = style->Colors;
@@ -140,7 +116,7 @@ void imgui_set_default_style()
 }
 
 static void
-fonts_upload(surface *s)
+fonts_upload()
 {
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -183,7 +159,7 @@ fonts_upload(surface *s)
 // All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
 // Your real engine/app may not use them.
 static void 
-imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
+imgui_init(VkSurfaceKHR surface, int width, int height)
 {
 
 	IMGUI_CHECKVERSION();
@@ -196,9 +172,8 @@ imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
 	io.ConfigDockingAlwaysTabBar         = true;
 	io.ConfigWindowsMoveFromTitleBarOnly = true;
 
-	float content_scale = get_content_scale(s);
+	float content_scale = get_content_scale();
 	window_content_scale_update(content_scale);
-	glfwSetWindowContentScaleCallback(s->window, window_content_scale_callback);
 
 	io.Fonts->AddFontFromFileTTF("asset/fonts/Font.ttf", content_scale * 16, nullptr, nullptr);
 	io.Fonts->Build();
@@ -212,7 +187,7 @@ imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
 	imgui_set_default_style();
 
 	// implement init
-	ImGui_ImplGlfw_InitForVulkan(s->window, true);
+	ImGui_ImplSDL2_InitForVulkan(S.window);
 	ImGui_ImplVulkan_InitInfo init_info = {};
 	init_info.Instance                  = VK_CTX.instance;
 	init_info.PhysicalDevice            = VK_CTX.phydevice;
@@ -225,87 +200,85 @@ imgui_init(surface *s, VkSurfaceKHR surface, int width, int height)
 	init_info.MinImageCount = conf::MAX_FRAMES_IN_FLIGHT;
 	init_info.ImageCount    = conf::MAX_FRAMES_IN_FLIGHT;
 	
-	s->render_pass = VK_CTX.swapchain.render_pass;
-
-	ImGui_ImplVulkan_Init(&init_info, s->render_pass);
+	ImGui_ImplVulkan_Init(&init_info, VK_CTX.swapchain.render_pass);
 
 	// fonts upload
-	fonts_upload(s);
+	fonts_upload();
 }
 
-surface *
-surface_new(const char *name, int width, int height)
+
+void
+vk_surface::init(const char *title, int width, int height)
 {
-	struct surface *s = new surface();
-	glfwInit();
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	s->window = glfwCreateWindow(width, height, name, nullptr, nullptr);
-	glfwSetWindowUserPointer(s->window, s);
-	glfwSetFramebufferSizeCallback(s->window, window_resized);
-	printf("surface_new:%p\n", s->window);
-	input::init(s->window);
-	return s;
+	SDL_Init(SDL_INIT_EVERYTHING);
+	S.window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, 
+		SDL_WINDOWPOS_CENTERED, width, height,
+		SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN);
+	    /* Create a Render */
+	S.render = SDL_CreateRenderer(S.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+	if (S.render == nullptr)
+		std::cout << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
 }
 
 void
-surface_del(surface *s)
+vk_surface::resolution(int *width, int *height)
 {
-	auto window = s->window;
-	if (window != nullptr) {
-		glfwDestroyWindow(window);
-		s->window = nullptr;
-	}
-	glfwTerminate();
-	delete s;
+	SDL_GetWindowSize(S.window, width, height);
+}
+	
+void
+vk_surface::bind(VkInstance instance, VkSurfaceKHR *surface)
+{
+	SDL_Vulkan_CreateSurface(S.window, instance, surface);
+}
+
+std::vector<const char *> 
+vk_surface::required_extensions() 
+{
+	unsigned int n = 0;
+	std::vector<const char *> extensions;
+	SDL_Vulkan_GetInstanceExtensions(S.window, &n, nullptr);
+	extensions.resize(n);
+	SDL_Vulkan_GetInstanceExtensions(S.window, &n, extensions.data());
+	return extensions;
 }
 
 void
-surface_size(surface *s, int *width, int *height)
-{
-	glfwGetWindowSize(s->window, width, height);
-}
-
-int
-surface_bind(surface *s, VkInstance instance, VkSurfaceKHR *surface)
-{
-	auto ret = glfwCreateWindowSurface(instance, s->window, nullptr, surface);
-	return (ret == VK_SUCCESS) ? 0 : -1;
-}
-
-int 
-surface_initui(surface *s, const VkSurfaceKHR *surface)
+vk_surface::init_ui(VkSurfaceKHR *surface)
 {
 	int width, height;
-	glfwGetFramebufferSize(s->window, &width, &height);
-	imgui_init(s, *surface, width, height);
-	return 0;
+	SDL_Vulkan_GetDrawableSize(S.window, &width, &height);
+	imgui_init(*surface, width, height);
 }
 
-int
-surface_pre_tick(struct surface *s)
+void
+vk_surface::pre_tick(float delta)
 {
-	if (glfwWindowShouldClose(s->window)) {
-		vkQueueWaitIdle(VK_CTX.graphicsqueue);
-		return -1;
+
+}
+
+void
+vk_surface::tick(float delta)
+{
+	SDL_Event e;
+	while (SDL_PollEvent(&e) != 0) {
+		switch (e.type) {
+		case SDL_QUIT:
+			running = false;
+			break;
+		default:
+			vk_input::inst().process(S.window, e, delta);
+			break;
+		};
 	}
-	glfwPollEvents();
-	return 0;
-}
-
-int
-surface_tick(struct surface *s)
-{
 	ImGui_ImplVulkan_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
+	ImGui_ImplSDL2_NewFrame();
 	ImGui::NewFrame();
-	// Start the Dear ImGui frame
-	return 0;
 }
 
-int
-surface_post_tick(struct surface *s) 
+void 
+vk_surface::post_tick(float delta)
 {
-        // Rendering
 	vk_ctx_renderpass_begin(nullptr);
 
 	ImGui::Render();
@@ -315,8 +288,24 @@ surface_post_tick(struct surface *s)
 	
 	ImGui::UpdatePlatformWindows();
 	ImGui::RenderPlatformWindowsDefault();
-	
-	return 0;
+}
+
+
+void
+vk_surface::set_title(const char *title)
+{
+	SDL_SetWindowTitle(S.window, title);
+}
+
+void
+vk_surface::exit()
+{
+	if (S.window != nullptr) {
+		SDL_DestroyRenderer(S.render);
+		SDL_DestroyWindow(S.window);
+		S.window = nullptr;
+		S.render = nullptr;
+	}
 }
 
 }}

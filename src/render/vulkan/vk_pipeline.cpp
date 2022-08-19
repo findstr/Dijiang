@@ -3,19 +3,18 @@
 #include "vk_ctx.h"
 #include "vk_shader_variables.h"
 #include "vk_pipeline.h"
+#include "vk_shader.h"
 
 namespace engine {
 namespace vulkan {
 
 vk_pipeline *
-vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa, VkPrimitiveTopology primitive_topolgy)
+vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa)
 {
 	VkPipeline pipeline = VK_NULL_HANDLE;
-	VkPipelineLayout pipelinelayout = VK_NULL_HANDLE;
-
 	VkVertexInputBindingDescription bindingDesc{};
 	bindingDesc.binding = 0;
-	bindingDesc.stride = render::vertex_type::size() * sizeof(float);
+	bindingDesc.stride = render::vertex_type::size_in_byte();
 	bindingDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	std::vector<VkVertexInputAttributeDescription> attrDescs;
@@ -24,7 +23,7 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa,
 		auto &ad = attrDescs.emplace_back();
 		ad.binding = 0;
 		ad.location = attr.location;
-		ad.offset = attr.type.offset() * sizeof(float);
+		ad.offset = attr.type.offset_in_float() * sizeof(float);
 		switch (attr.type) {
 		case render::vertex_type::POSITION:
 			ad.format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -62,7 +61,7 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa,
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
 	inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssemblyState.topology = primitive_topolgy;
+	inputAssemblyState.topology = shader->topology_triangle ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 	inputAssemblyState.primitiveRestartEnable = VK_FALSE;
 
 	VkRect2D scissor = {};
@@ -141,17 +140,6 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa,
 	dynamicState.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
 	dynamicState.pDynamicStates = dynamicStates;
 
-	VkDescriptorSetLayout shader_layout = shader->desc_set_layout();
-	VkDescriptorSetLayout layouts[] = {shader_layout, VK_CTX.engine_desc_set_layout};
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 2;
-	pipelineLayoutInfo.pSetLayouts = layouts;
-	pipelineLayoutInfo.pushConstantRangeCount = 0;
-	pipelineLayoutInfo.pPushConstantRanges = 0;
-	if (vkCreatePipelineLayout(VK_CTX.device, &pipelineLayoutInfo, nullptr, &pipelinelayout) != VK_SUCCESS)
-		return nullptr;
-
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencil.depthTestEnable = ztest ? VK_TRUE : VK_FALSE;
@@ -186,7 +174,7 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa,
 	pipelineInfo.pDepthStencilState = &depthStencil;
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = &dynamicState;
-	pipelineInfo.layout = pipelinelayout;
+	pipelineInfo.layout = VK_CTX.engine_bindless_pipeline_layout;
 	pipelineInfo.renderPass = pass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -195,13 +183,12 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa,
 	if (vkCreateGraphicsPipelines(VK_CTX.device, VK_CTX.pipeline_cache, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		return nullptr;
 	printf("create pipeline end\n");
-	return new vk_pipeline(pipeline, pipelinelayout);
+	return new vk_pipeline(pipeline);
 }
 
 vk_pipeline::~vk_pipeline()
 {
 	vkDestroyPipeline(VK_CTX.device, handle, nullptr);
-	vkDestroyPipelineLayout(VK_CTX.device, layout, nullptr);
 }
 
 }}

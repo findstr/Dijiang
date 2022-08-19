@@ -5,6 +5,7 @@ namespace conf {
 	const int MAX_FRAMES_IN_FLIGHT = 3;
 	const int VERSION_MAJOR = 1;
 	const int VERSION_MINOR = 0;
+	const int MAX_BINDLESS_RESOURCE = 1024;
 }}
 
 #ifdef __WINDOWS__ 

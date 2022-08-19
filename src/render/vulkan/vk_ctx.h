@@ -4,6 +4,7 @@
 #include "vulkan/vk_object.h"
 #include "vulkan/vk_surface.h"
 #include "vulkan/vk_swapchain.h"
+#include "vulkan/vk_buffer.h"
 #include "conf.h"
 
 namespace engine {
@@ -29,18 +30,30 @@ namespace vulkan {
 		int graphicsfamily = -1;
 		int presentfamily = -1;
 		int frame_index = 0;
+		uint32_t cmdbuf_index = 0;
 		VkCommandBuffer cmdbuf = VK_NULL_HANDLE;
 		VkFramebuffer current_framebuffer = VK_NULL_HANDLE;
 		VkRenderPass current_renderpass = VK_NULL_HANDLE;
 		bool enable_msaa = false;	
-		std::array<VkCommandBuffer, conf::MAX_FRAMES_IN_FLIGHT> cmdbufs;
+		std::array<VkCommandBuffer, conf::MAX_FRAMES_IN_FLIGHT+1> cmdbufs;
 		PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT = VK_NULL_HANDLE;
 		PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT = VK_NULL_HANDLE;
 		VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+		
+		VkPipelineLayout engine_bindless_pipeline_layout = VK_NULL_HANDLE;
+		VkDescriptorSetLayout engine_bindless_texture_layout = VK_NULL_HANDLE;
+		VkDescriptorSet engine_bindless_texture_set = VK_NULL_HANDLE;
+		VkDescriptorSetLayout engine_bindless_object_layout = VK_NULL_HANDLE;
+		VkDescriptorSetLayout engine_bindless_material_layout = VK_NULL_HANDLE;
+		VkDescriptorSet engine_bindless_object_set[conf::MAX_FRAMES_IN_FLIGHT];
+		VkDescriptorSet engine_bindless_material_set[conf::MAX_FRAMES_IN_FLIGHT];
+		std::unique_ptr<vk_buffer> engine_bindless_object[conf::MAX_FRAMES_IN_FLIGHT];
+		std::unique_ptr<vk_buffer> engine_bindless_material[conf::MAX_FRAMES_IN_FLIGHT];
 	};
-	int vk_ctx_init(const char *name, surface *s, int width, int height);
+	int vk_ctx_init(const char *name, int width, int height);
 	void vk_ctx_init_lighting();
 	void vk_ctx_frame_begin();
+	void vk_ctx_reset_cmbuf();
 	void vk_ctx_frame_end();
 	void vk_ctx_renderpass_begin(render_texture *rt);
 	void vk_ctx_renderpass_end();

@@ -1,7 +1,6 @@
 #include "vk_cubemap.h"
 #include "vk_debugger.h"
 #include "vk_mesh.h"
-#include "vk_material.h"
 #include "vk_texture2d.h"
 #include "vk_render_texture.h"
 
@@ -12,14 +11,6 @@ namespace render {
 type *\
 type::create(__VA_ARGS__) {\
 	return new vulkan::vk_##type(__VA_ARGS__); \
-}
-
-FACTOR(mesh);
-
-material*
-material::create(render_pass::path path, std::shared_ptr<class shader> &s, bool ztest) 
-{
-	return new vulkan::vk_material(path, s, ztest); 
 }
 
 texture2d *

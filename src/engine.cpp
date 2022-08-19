@@ -14,7 +14,7 @@ engine::init()
 	luavm::init();
 	resource::init();
 	render::debugger::inst().init();
-	level::load("asset/main.level");
+	level::load("asset/terrain.level");
 }
 
 bool

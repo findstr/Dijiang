@@ -14,7 +14,7 @@ vk_mesh::upload_vertex(std::unique_ptr<vk_buffer> &buf)
 	bool isskin = bone_weights.size() > 0;
 	bool hasnormal = normals.size() > 0;
 	bool hastangent = tangents.size() > 0;
-	size_t vertex_size = render::vertex_type::size();
+	size_t vertex_size = render::vertex_type::size_in_float();
 	VkDeviceSize size = vertex_size * sizeof(float) * vertices.size();
 	vk_buffer staging(vk_buffer::STAGING, size);
 	float *stage_buf =  (float *)staging.map();
@@ -28,37 +28,37 @@ vk_mesh::upload_vertex(std::unique_ptr<vk_buffer> &buf)
 	render::vertex_type t_weights = render::vertex_type::BLENDWEIGHT;
 
 	for (int i = 0; i < vertices.size(); i++) {
-		auto *p = &data[t_pos.offset()];
+		auto *p = &data[t_pos.offset_in_float()];
 		p[0] = vertices[i].x();
 		p[1] = vertices[i].y();
 		p[2] = vertices[i].z();
 		if (hasuv) {
-			auto *p = &data[t_uv.offset()];
+			auto *p = &data[t_uv.offset_in_float()];
 			p[0] = uv[i].x();
 			p[1] = uv[i].y();
 		}
 		if (hascolor) {
-			auto *p = &data[t_color.offset()];
+			auto *p = &data[t_color.offset_in_float()];
 			p[0] = colors[i].x();
 			p[1] = colors[i].y();
 			p[2] = colors[i].z();
 		}
 		if (hasnormal) {
-			auto *p = &data[t_normal.offset()];
+			auto *p = &data[t_normal.offset_in_float()];
 			p[0] = normals[i].x();
 			p[1] = normals[i].y();
 			p[2] = normals[i].z();
 		}
 		if (hastangent) {
-			auto *p = &data[t_tangent.offset()];
+			auto *p = &data[t_tangent.offset_in_float()];
 			p[0] = tangents[i].x();
 			p[1] = tangents[i].y();
 			p[2] = tangents[i].z();
 		}
 		if (isskin) {
 			int j;
-			uint32_t *indices = (uint32_t *)&data[t_indices.offset()];
-			auto *weights = &data[t_weights.offset()];
+			uint32_t *indices = (uint32_t *)&data[t_indices.offset_in_float()];
+			auto *weights = &data[t_weights.offset_in_float()];
 			for (j = 0; j < 4; j++) {
 				indices[j] =  bone_weights[i].index[j];
 				weights[j] = bone_weights[i].weight[j];

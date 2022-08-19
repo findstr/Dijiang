@@ -13,7 +13,7 @@ private:
 public:
 	meshrender(gameobject *go) :component(go) {}
 	meshrender(gameobject *go, std::shared_ptr<render::material> &m);
-	render::material *get_material(render_pass::path path);
+	render::material *get_material(enum render::shader::light_mode mode);
 	void add_material(std::shared_ptr<render::material> &m);
 public:
 	const std::string name() override { return "meshrender"; }

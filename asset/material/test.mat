@@ -1,8 +1,6 @@
-render_path : forward
-render_queue : geometry
-shader_file: asset/shaders/shader
+shader_file: asset/shaders/shader.shader
 shader_params:
     -
-        name: tex
+        name: albedo
         type: texture2d
         file: asset/textures/viking_room.png

@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include <cmath>
+#include "render/gpu_resource.h"
 #include "render/texture_wrap.h"
 #include "render/texture_format.h"
 #include "render/texture_filter.h"
@@ -24,6 +25,9 @@ public:
 	bool linear = false;
 	int miplevels = 0;
 	int anisolevels = 0;
+	//TODO: modify to invalid_handle
+	//texture_handle_t handle = invalid_handle;
+	texture_handle_t handle = 0;
 	texture_format format = texture_format::RGBA32;
 	texture_wrap wrap_mode_u = texture_wrap::REPEAT;
 	texture_wrap wrap_mode_v = texture_wrap::REPEAT;

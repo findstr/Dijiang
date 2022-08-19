@@ -7,6 +7,7 @@ struct vsin {
 	float3 tangent : TANGENT0;
 	float3 normal : NORMAL0;
 	float2 uv : TEXCOORD0;
+	uint instanceId : SV_InstanceID;
 	engine_skeleton_vertex skeleton;
 };
 
@@ -22,7 +23,8 @@ struct vsout {
 
 vsout vert(vsin input) {
 	vsout output;
-	float4x4 model_matrix = mul(engine_matrix_model, engine_skeleton_vertex_blend(input.skeleton));
+	float4x4 engine_matrix_model = engine_bindless_objects[input.instanceId].engine_matrix_model;
+	float4x4 model_matrix = mul(engine_matrix_model, engine_skeleton_vertex_blend(input.instanceId, input.skeleton));
 	float4x4 vp = mul(engine_matrix_proj,  engine_matrix_view);
 	float4x4 mvp = mul(engine_matrix_proj, mul(engine_matrix_view, model_matrix));
 	output.pos = mul(mvp, float4(input.position, 1.0));

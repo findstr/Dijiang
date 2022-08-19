@@ -1,6 +1,4 @@
-render_path : forward
-render_queue : geometry
-shader_file: asset/shaders/skybox
+shader_file: asset/shaders/skybox.shader
 shader_params:
     -
         name: tex

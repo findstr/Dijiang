@@ -23,15 +23,7 @@ void
 gameobject::set_parent(gameobject *go, bool keep_world)
 {
 	parent = go;
-	if (go == nullptr)
-		return ;
-	if (keep_world) {
-		transform.local_position =
-			transform.position - go->transform.position;
-	} else {
-		transform.position = go->transform.position + transform.local_position;
-	}
-	//TODO: adjust scale, local_scale, rotation, local_rotation
+	transform.set_parent(go != nullptr ? &go->transform : nullptr, keep_world);
 }
 
 void

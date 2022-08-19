@@ -9,9 +9,9 @@ meshrender::meshrender(gameobject *go, std::shared_ptr<render::material> &m) :
 }
 
 render::material *
-meshrender::get_material(render_pass::path path)
+meshrender::get_material(enum render::shader::light_mode mode)
 {
-	if (path == render_pass::SHADOW)
+	if (mode == render::shader::light_mode::SHADOWCASTER)
 		return shadow.get();
 	else
 		return material.get();
@@ -20,7 +20,7 @@ meshrender::get_material(render_pass::path path)
 void
 meshrender::add_material(std::shared_ptr<render::material> &m)
 {
-	if (m->render_path() == render_pass::SHADOW) {
+	if (m->get_shader()->light_mode == render::shader::light_mode::SHADOWCASTER) {
 		shadow = m;
 	} else {
 		assert(material.get() == nullptr); //TODO: support multi material

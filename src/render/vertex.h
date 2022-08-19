@@ -16,7 +16,7 @@ struct vertex_type {
 		COUNT,
 	};
 	constexpr vertex_type(type t) : value_(t) {}
-	constexpr size_t offset() const {
+	constexpr size_t offset_in_float() const {
 		switch (value_) {
 		case POSITION:
 			return 0;
@@ -37,8 +37,14 @@ struct vertex_type {
 			return 0;
 		}
 	}
-	static inline constexpr size_t size() {
+	constexpr size_t offset_in_byte() const {
+		return offset_in_float() * sizeof(float);
+	}
+	static inline constexpr size_t size_in_float() {
 		return (3+2+3+3+3+4+4);
+	}
+	static inline constexpr size_t size_in_byte() {
+		return size_in_float() * sizeof(float);
 	}
 	constexpr operator type() const { return value_; }
 	explicit operator bool() = delete;

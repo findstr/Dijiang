@@ -1,5 +1,2 @@
-render_path : forward
-render_queue : geometry
-ztest: off
-shader_file: asset/shaders/line
+shader_file: asset/shaders/line.shader
 

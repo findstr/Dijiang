@@ -25,8 +25,8 @@ scene_camera::draw_camera(camera *cam)
 	vector3f camera_right = cam->right();
 	vector3f camera_forward = cam->forward();
 
-	vector3f center_near = cam->transform->position + camera_forward * cam->clip_near_plane;
-	vector3f center_far = cam->transform->position + camera_forward * cam->clip_far_plane;
+	vector3f center_near = cam->transform->position() + camera_forward * cam->clip_near_plane;
+	vector3f center_far = cam->transform->position() + camera_forward * cam->clip_far_plane;
 	vector3f center = (center_near + center_far) * 0.5f;
 
 	vector3f left_top_near = center_near + camera_up * h_near / 2.0f - camera_right * w_near / 2.0f;
@@ -57,10 +57,10 @@ scene_camera::draw_camera(camera *cam)
 	dbg.draw_line(right_top_near, c, right_top_far, c);
 	dbg.draw_line(right_bottom_near, c, right_bottom_far, c);
 
-	dbg.draw_line(cam->transform->position, c, left_top_near, c);
-	dbg.draw_line(cam->transform->position, c, left_bottom_near, c);
-	dbg.draw_line(cam->transform->position, c, right_top_near, c);
-	dbg.draw_line(cam->transform->position, c, right_bottom_near, c);
+	dbg.draw_line(cam->transform->position(), c, left_top_near, c);
+	dbg.draw_line(cam->transform->position(), c, left_bottom_near, c);
+	dbg.draw_line(cam->transform->position(), c, right_top_near, c);
+	dbg.draw_line(cam->transform->position(), c, right_bottom_near, c);
 }
 
 void
@@ -76,8 +76,8 @@ scene_camera::draw_light(camera *cam, light *li)
 	vector3f camera_right = cam->right();
 	vector3f camera_forward = cam->forward();
 
-	vector3f center_near = cam->transform->position + camera_forward * cam->clip_near_plane;
-	vector3f center_far = cam->transform->position + camera_forward * cam->clip_far_plane;
+	vector3f center_near = cam->transform->position() + camera_forward * cam->clip_near_plane;
+	vector3f center_far = cam->transform->position() + camera_forward * cam->clip_far_plane;
 	vector3f center = (center_near + center_far) * 0.5f;
 
 	vector3f left_top_near = center_near + camera_up * h_near / 2.0f - camera_right * w_near / 2.0f;
@@ -91,8 +91,8 @@ scene_camera::draw_light(camera *cam, light *li)
 	vector3f right_bottom_far = center_far - camera_up * h_far / 2.0f + camera_right * w_far / 2.0f;
 
 #define extract(a) a.x(), a.y(), a.z()
-	auto eye_dir = center + li->transform->rotation * vector3f::forward();
-	auto up = li->transform->rotation * vector3f::up();
+	auto eye_dir = center + li->transform->rotation() * vector3f::forward();
+	auto up = li->transform->rotation() * vector3f::up();
 	glm::mat4 light_space = glm::lookAt(
 			glm::vec3(extract(center)),
 			glm::vec3(extract(eye_dir)),
@@ -141,15 +141,15 @@ scene_camera::draw_light(camera *cam, light *li)
 	float size = std::max((r - l) / 2.0f, (t - b) / 2.0f);
 
 	{
-	vector3f left_top_near = center + li->transform->rotation * vector3f(l, t, n);
-	vector3f right_top_near = center + li->transform->rotation * vector3f(r, t, n);
-	vector3f left_bottom_near = center + li->transform->rotation * vector3f(l, b, n);
-	vector3f right_bottom_near = center + li->transform->rotation * vector3f(r, b, n);
+	vector3f left_top_near = center + li->transform->rotation() * vector3f(l, t, n);
+	vector3f right_top_near = center + li->transform->rotation() * vector3f(r, t, n);
+	vector3f left_bottom_near = center + li->transform->rotation() * vector3f(l, b, n);
+	vector3f right_bottom_near = center + li->transform->rotation() * vector3f(r, b, n);
 
-	vector3f left_top_far = center + li->transform->rotation * vector3f(l, t, f);
-	vector3f right_top_far = center + li->transform->rotation * vector3f(r, t, f);
-	vector3f left_bottom_far = center + li->transform->rotation * vector3f(l, b, f);
-	vector3f right_bottom_far = center + li->transform->rotation * vector3f(r, b, f);
+	vector3f left_top_far = center + li->transform->rotation() * vector3f(l, t, f);
+	vector3f right_top_far = center + li->transform->rotation() * vector3f(r, t, f);
+	vector3f left_bottom_far = center + li->transform->rotation() * vector3f(l, b, f);
+	vector3f right_bottom_far = center + li->transform->rotation() * vector3f(r, b, f);
 
 	auto &dbg = render::debugger::inst();
 
@@ -175,6 +175,7 @@ scene_camera::draw_light(camera *cam, light *li)
 void
 scene_camera::render()
 {
+	/*
 	level::cull(this, draw_list, render_pass::FORWARD);
 	RENDER_SYSTEM.set_camera(this);
 	if (show_skeleton) {
@@ -215,6 +216,7 @@ scene_camera::render()
 		RENDER_SYSTEM.draw(d);
 	draw_list.clear();
 	RENDER_SYSTEM.renderpass_end();
+	*/
 }
 
 }
