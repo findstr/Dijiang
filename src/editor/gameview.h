@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "conf.h"
 #include "engine.h"
 #include "render/draw_object.h"
 #include "render/render_texture.h"
@@ -16,7 +17,7 @@ public:
 	const std::string title;
 	bool is_open = true;
 private:
-	ImTextureID texture_id = nullptr;
+	ImTextureID texture_id[conf::MAX_FRAMES_IN_FLIGHT];
 	std::unique_ptr<render_texture> render_texture;
 	std::vector<draw_object> drawlist;
 };

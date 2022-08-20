@@ -26,9 +26,9 @@ sceneview::sceneview() :
 
 	render_texture.reset(render_texture::create(
 		1024, 768, texture_format::RGBA32, texture_format::D32S8, false, 1));
-	texture_id = ImGui_ImplVulkan_AddTexture((VkSampler)render_texture->sampler(), 
-		(VkImageView) render_texture->handle(), 
-		VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
+	texture_id = ImGui_ImplVulkan_AddTexture((VkSampler)render_texture->sampler(0), 
+		(VkImageView) render_texture->handle(0), 
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void

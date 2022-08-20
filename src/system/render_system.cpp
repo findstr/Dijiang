@@ -106,6 +106,9 @@ render_system::frame_begin(float delta)
 	uniform_per_camera->frame_begin(1024);
 	uniform_per_object->frame_begin(1024);
 
+	for (int i = 0; i < ubo_offset.size(); i++)
+		ubo_offset[i] = 0;
+
 	return 0;
 }
 

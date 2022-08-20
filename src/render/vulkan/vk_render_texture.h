@@ -11,8 +11,8 @@ namespace vulkan {
 class vk_render_texture : public render_texture {
 public:
 	void apply();
-	intptr_t handle() const override { return (intptr_t)(color_buffer[VK_CTX.frame_index].view); }
-	intptr_t sampler() const override { return (intptr_t)color_sampler[VK_CTX.frame_index]; }
+	intptr_t handle(int i) const override { return (intptr_t)(color_buffer[i].view); }
+	intptr_t sampler(int i) const override { return (intptr_t)color_sampler[i]; }
 	VkImageView imageview(int frame_index) { return color_buffer[frame_index].view; }
 	VkSampler sampler(int frame_index) { return color_sampler[frame_index]; }
 	VkFramebuffer framebuffer() { return framebuffers[VK_CTX.frame_index]; }

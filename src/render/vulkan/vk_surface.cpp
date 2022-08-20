@@ -213,7 +213,7 @@ vk_surface::init(const char *title, int width, int height)
 	SDL_Init(SDL_INIT_EVERYTHING);
 	S.window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, 
 		SDL_WINDOWPOS_CENTERED, width, height,
-		SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN);
+		SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI);
 	    /* Create a Render */
 	S.render = SDL_CreateRenderer(S.window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 	if (S.render == nullptr)
@@ -262,6 +262,7 @@ vk_surface::tick(float delta)
 {
 	SDL_Event e;
 	while (SDL_PollEvent(&e) != 0) {
+		ImGui_ImplSDL2_ProcessEvent(&e);
 		switch (e.type) {
 		case SDL_QUIT:
 			running = false;

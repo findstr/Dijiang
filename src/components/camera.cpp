@@ -34,6 +34,7 @@ camera::unreg()
 void
 camera::render()
 {
+	/*
 	RENDER_SYSTEM.shadowpass_begin();
 	RENDER_SYSTEM.set_light(light::all_lights()[0], this);
 	RENDER_SYSTEM.set_light_camera(light::all_lights()[0], this);
@@ -41,6 +42,7 @@ camera::render()
 	RENDER_SYSTEM.init_for_object(draw_list);
 	RENDER_SYSTEM.draw(draw_list);
 	RENDER_SYSTEM.shadowpass_end();
+	*/
 	RENDER_SYSTEM.renderpass_begin(render_target);
 	draw_list.clear();
 	RENDER_SYSTEM.set_camera(this);

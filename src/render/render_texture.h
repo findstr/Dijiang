@@ -9,8 +9,8 @@ namespace engine {
 class render_texture : public render::texture {
 public:
 	render_texture() : render::texture(render::texture::TEX2D) {}
-	virtual intptr_t handle() const = 0; 
-	virtual intptr_t sampler() const = 0;
+	virtual intptr_t handle(int i) const = 0; 
+	virtual intptr_t sampler(int i) const = 0;
 protected:
 	texture_format depth_format;
 public:

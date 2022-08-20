@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "backends/imgui_impl_vulkan.h"
+#include "vulkan/vk_ctx.h"
 #include "components/camera.h"
 #include "render/draw_object.h"
 #include "system/render_system.h"
@@ -18,9 +19,11 @@ gameview::gameview() :
 {
 	render_texture.reset(render_texture::create(
 		1024, 768, texture_format::RGBA32, texture_format::D32S8, false, 1));
-	texture_id = ImGui_ImplVulkan_AddTexture((VkSampler)render_texture->sampler(), 
-		(VkImageView) render_texture->handle(), 
-		VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
+	for (int i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
+		texture_id[i] = ImGui_ImplVulkan_AddTexture((VkSampler)render_texture->sampler(i),
+			(VkImageView)render_texture->handle(i),
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
 }
 
 void
@@ -36,7 +39,7 @@ gameview::tick(engine *e, float delta)
 		cam->render();
 		cam->render_target = nullptr;
 	}
-	ImGui::Image(texture_id, ImGui::GetContentRegionAvail());
+	ImGui::Image(texture_id[vulkan::VK_CTX.frame_index], ImGui::GetContentRegionAvail());
 	ImGui::End();
 }
 
