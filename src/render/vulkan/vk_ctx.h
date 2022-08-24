@@ -5,6 +5,8 @@
 #include "vulkan/vk_surface.h"
 #include "vulkan/vk_swapchain.h"
 #include "vulkan/vk_buffer.h"
+#include "vulkan/vk_texture.h"
+#include "utils/delete_queue.h"
 #include "conf.h"
 
 namespace engine {
@@ -32,10 +34,14 @@ namespace vulkan {
 		int frame_index = 0;
 		uint32_t cmdbuf_index = 0;
 		VkCommandBuffer cmdbuf = VK_NULL_HANDLE;
+		delete_queue<vk_buffer> *buf_delq = nullptr;
+		delete_queue<vk_texture>* tex_delq = nullptr;
 		VkFramebuffer current_framebuffer = VK_NULL_HANDLE;
 		VkRenderPass current_renderpass = VK_NULL_HANDLE;
 		bool enable_msaa = false;	
 		std::array<VkCommandBuffer, conf::MAX_FRAMES_IN_FLIGHT+1> cmdbufs;
+		std::array<delete_queue<vk_buffer>, conf::MAX_FRAMES_IN_FLIGHT + 1> buf_delqs;
+		std::array<delete_queue<vk_texture>, conf::MAX_FRAMES_IN_FLIGHT + 1> tex_delqs;
 		PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT = VK_NULL_HANDLE;
 		PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT = VK_NULL_HANDLE;
 		VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;

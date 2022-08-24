@@ -1,12 +1,20 @@
 #include <stdio.h>
-#include "cmdbuf.h"
-#include "vk_ctx.h"
 #include "vk_buffer.h"
+
+#include "vk_ctx.h"
 namespace engine {
 namespace vulkan {
 
+
 void
 vk_buffer::destroy()
+{
+	if (this->handle != VK_NULL_HANDLE)
+		VK_CTX.buf_delq->exec(*this);
+}
+
+void
+vk_buffer::clear()
 {
 	if (handle != VK_NULL_HANDLE) {
 		vmaDestroyBuffer(VK_CTX.allocator, handle, allocation);
@@ -20,45 +28,25 @@ vk_buffer::~vk_buffer()
 }
 
 void
-vk_buffer::copy_from(VkCommandBuffer cmdbuf, vk_buffer *src)
+vk_buffer::copy_from(vk_buffer *src)
 {
+	assert(size == src->size);
 	VkBufferCopy copyRegion{};
 	copyRegion.srcOffset = 0;
 	copyRegion.dstOffset = 0;
 	copyRegion.size = src->size;
-	vkCmdCopyBuffer(cmdbuf, src->handle, handle, 1, &copyRegion);
-}
-
-void
-vk_buffer::copy_from(vk_buffer *src)
-{
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = VK_CTX.commandpool;
-	allocInfo.commandBufferCount = 1;
-	assert(size == src->size);
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
-	copy_from(commandBuffer, src);
-	cmdbuf_single_end(commandBuffer);
+	vkCmdCopyBuffer(VK_CTX.cmdbuf, src->handle, handle, 1, &copyRegion);
 }
 
 void
 vk_buffer::copy_from(vk_buffer *src, size_t srcoffset, size_t dstoffset, size_t size)
 {
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = VK_CTX.commandpool;
-	allocInfo.commandBufferCount = 1;
 	assert((srcoffset + size) <= src->size);
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
 	VkBufferCopy copyRegion{};
 	copyRegion.srcOffset = srcoffset;
 	copyRegion.dstOffset = dstoffset;
 	copyRegion.size = size;
-	vkCmdCopyBuffer(commandBuffer, src->handle, handle, 1, &copyRegion);
-	cmdbuf_single_end(commandBuffer);
+	vkCmdCopyBuffer(VK_CTX.cmdbuf, src->handle, handle, 1, &copyRegion);
 }
 
 void *

@@ -124,12 +124,10 @@ gpu_mesh::flush_upload()
 	render::vertex_type t_indices = render::vertex_type::BLENDINDICES;
 	render::vertex_type t_weights = render::vertex_type::BLENDWEIGHT;
 	size_t vertex_size = render::vertex_type::size_in_float();
-	vk_buffer staging(vk_buffer::STAGING, max_loading_vertex_count * vertex_size * sizeof(float));
 	for (auto m : loadings) {
 		int vertex_count = m->vertices.size(); 
 		int need_size = vertex_count * vertex_size * sizeof(float);
-		if (staging.size < need_size)
-			staging.create(vk_buffer::STAGING, need_size);
+		vk_buffer staging(vk_buffer::STAGING, need_size);
 		float *stage_buf =  (float *)staging.map();
 		float *data = stage_buf;
 		auto &vertices = m->vertices;
@@ -198,11 +196,10 @@ gpu_mesh::flush_upload()
 
 		md.index_count = m->triangles.size();
 		need_size = m->triangles.size() * sizeof(uint32_t);
-		if (staging.size < need_size)
-			staging.create(vk_buffer::STAGING, need_size);
-		staging.upload(m->triangles.data(), (size_t)need_size);	
+		vk_buffer staging2(vk_buffer::STAGING, need_size);
+		staging2.upload(m->triangles.data(), (size_t)need_size);	
 		md.index_chunk = alloc_index(m->triangles.size(), &md.index_offset, &md.index_alloc);
-		index_buffer(md).buffer.copy_from(&staging, 0, md.index_offset, need_size);
+		index_buffer(md).buffer.copy_from(&staging2, 0, md.index_offset, need_size);
 		m->handle = handle;
 		m->dirty = false;
 	}

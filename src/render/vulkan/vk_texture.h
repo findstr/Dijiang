@@ -9,6 +9,17 @@ namespace vulkan {
 
 struct vk_texture {
 public:
+	vk_texture() {
+	}
+	vk_texture(vk_texture&& a) {
+		clear();
+		this->image = a.image;
+		this->view = a.view;
+		this->allocation = a.allocation;
+		a.image = VK_NULL_HANDLE;
+		a.view = VK_NULL_HANDLE;
+		a.allocation = VK_NULL_HANDLE;
+	}
 	~vk_texture();
 public:
 	void destroy();
@@ -20,6 +31,9 @@ public:
 	VkImage image = VK_NULL_HANDLE;
 	VkImageView view = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
+private:
+	friend delete_queue<vk_texture>;
+	void clear();
 };
 
 }}

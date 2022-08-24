@@ -1,7 +1,5 @@
 #include <optional>
 #include "vk_object.h"
-#include "samplermgr.h"
-#include "cmdbuf.h"
 #include "vk_buffer.h"
 #include "vk_texture2d.h"
 #include "vk_sampler_pool.h"

@@ -6,7 +6,6 @@
 #include "render/vulkan/vk_native.h"
 #include "render/vulkan/vk_surface.h"
 #include "render/vulkan/vk_shader.h"
-#include "render/vulkan/vk_mesh.h"
 #include "render/vulkan/vk_shader_variables.h"
 #include "render/gpu_interface.h"
 #include "render/vulkan/vk_set_write.h"
@@ -66,10 +65,12 @@ update_uniformbuffer_per_object(render::ubo::per_camera *ubo_cam, render::ubo::p
 	ubo->model = to_mat4(draw.go->transform.local_to_world_matrix());
 	ubo->model_view_proj = ubo_cam->view_proj * ubo->model;
 	if (draw.skeleton_pose != nullptr) {
+		/*
 		int bone_count = std::min(draw.skeleton_pose->size(), ubo->skeleton_pose.size());
 		for (int k = 0; k < bone_count; k++) {
 			ubo->skeleton_pose[k] = to_mat4((*draw.skeleton_pose)[k].matrix);
 		}
+		*/
 	}
 }
 	
@@ -83,7 +84,7 @@ int
 render_system::frame_begin(float delta)
 {
 	vulkan::vk_set_write::inst().flush();
-
+	gpu_mesh::instance().flush();
 	int width, height;
 	vulkan::vk_surface::inst().pre_tick(delta);
 	vulkan::vk_ctx_frame_begin();
@@ -116,7 +117,6 @@ void
 render_system::renderpass_begin(render_texture *rt)
 {
 	vulkan::vk_ctx_renderpass_begin(rt);
-	gpu_mesh::instance().flush();
 }
 
 void
@@ -395,9 +395,10 @@ render_system::draw(std::vector<draw_object> &draw_list)
 	auto *ubo = (render::ubo::per_object *)vulkan::VK_CTX.engine_bindless_object[vulkan::VK_CTX.frame_index]->map();
 	for (int i = 0; i < draw_list.size(); i++) {
 		auto &draw = draw_list[i];
-		update_uniformbuffer_per_object(ubo_per_camera, &ubo[i], draw);
+		auto u = &ubo[ssbo_offset + i];
+		update_uniformbuffer_per_object(ubo_per_camera, u, draw);
 	}
-	vulkan::VK_CTX.engine_bindless_object[vulkan::VK_CTX.frame_index]->unmap(ssbo_offset * sizeof(*ubo), draw_list.size() * sizeof(*ubo));
+	vulkan::VK_CTX.engine_bindless_object[vulkan::VK_CTX.frame_index]->unmap();// ssbo_offset * sizeof(*ubo), draw_list.size() * sizeof(*ubo));
 	ssbo_offset += draw_list.size();
 	int indirect_count = 0;
 	auto *indirect_cmd = (VkDrawIndexedIndirectCommand *)indirect_buffer[vulkan::VK_CTX.frame_index].map();

@@ -1,8 +1,6 @@
 #include <optional>
 #include <assert.h>
 #include "vk_object.h"
-#include "samplermgr.h"
-#include "cmdbuf.h"
 #include "vk_buffer.h"
 #include "vk_texture.h"
 #include "vk_format.h"
@@ -20,6 +18,13 @@ vk_texture::~vk_texture()
 
 void
 vk_texture::destroy()
+{
+	if (image != VK_NULL_HANDLE)
+		VK_CTX.tex_delq->exec(*this);
+}
+
+void
+vk_texture::clear()
 {
 	if (view != VK_NULL_HANDLE) {
 		vkDestroyImageView(VK_CTX.device, view, nullptr);
@@ -92,7 +97,7 @@ vk_texture::transition_layout(
 	int layer_count)
 {
 	vk_format format(tex->format, tex->linear);
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
+	VkCommandBuffer commandBuffer = VK_CTX.cmdbuf; // cmdbuf_single_begin();
 
 	VkPipelineStageFlags srcStage;
 	VkPipelineStageFlags dstStage;
@@ -138,13 +143,13 @@ vk_texture::transition_layout(
 		0, nullptr,
 		1, &barrier
 	);
-	cmdbuf_single_end(commandBuffer);
+	//cmdbuf_single_end(commandBuffer);
 }
 
 void
 vk_texture::fill(const render::texture *tex, vk_buffer &staging, int layer_count)
 {
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
+	VkCommandBuffer commandBuffer = VK_CTX.cmdbuf; // cmdbuf_single_begin();
 
 	VkBufferImageCopy region{};
 	region.bufferOffset = 0;
@@ -167,7 +172,7 @@ vk_texture::fill(const render::texture *tex, vk_buffer &staging, int layer_count
 		1,
 		&region
 	);
-	cmdbuf_single_end(commandBuffer);
+	//cmdbuf_single_end(commandBuffer);
 }
 
 void
@@ -181,7 +186,7 @@ vk_texture::gen_mipmap(const render::texture *tex, int layer_count)
 	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
 		throw std::runtime_error("texture image format does not support linear blitting!");
 	}
-	VkCommandBuffer commandBuffer = cmdbuf_single_begin();
+	VkCommandBuffer commandBuffer = VK_CTX.cmdbuf; // cmdbuf_single_begin();
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.image = image;
@@ -262,7 +267,7 @@ vk_texture::gen_mipmap(const render::texture *tex, int layer_count)
 			0, nullptr,
 			0, nullptr,
 			1, &barrier);
-	cmdbuf_single_end(commandBuffer);
+	//cmdbuf_single_end(commandBuffer);
 }
 
 }

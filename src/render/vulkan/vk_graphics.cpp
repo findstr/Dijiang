@@ -5,7 +5,6 @@
 #include "render/vulkan/vk_native.h"
 #include "render/vulkan/vk_surface.h"
 #include "render/vulkan/vk_shader.h"
-#include "render/vulkan/vk_mesh.h"
 #include "render/vulkan/vk_shader_variables.h"
 #include "render/gpu_interface.h"
 

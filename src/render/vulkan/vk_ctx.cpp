@@ -546,7 +546,7 @@ create_engine_descriptor_set()
 	
 	alloc_info.pNext = &count_info;
 	for (int i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
-		CTX.engine_bindless_object[i].reset(new vk_buffer(vk_buffer::STORAGE, 1024*64));
+		CTX.engine_bindless_object[i].reset(new vk_buffer(vk_buffer::STORAGE, 1024*1024*1));
 		ret = vkAllocateDescriptorSets(CTX.device, &alloc_info, &CTX.engine_bindless_object_set[i]);
 		assert(ret == VK_SUCCESS);
 		VkDescriptorBufferInfo bufferInfo{};
@@ -771,18 +771,9 @@ vk_ctx_init(const char *name, int width, int height)
 		fprintf(stderr, "[render] new_renderframe result:%d\n", result);
 		return -1;
 	}
-	create_engine_descriptor_set();
-	CTX.depth_format = find_depth_format();
-	std::cout << "The GPU has a minimum buffer alignment of " <<
-		CTX.properties.limits.minUniformBufferOffsetAlignment << std::endl;
-
-	CTX.vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(VK_CTX.instance, "vkCmdBeginDebugUtilsLabelEXT");
-	CTX.vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(VK_CTX.instance, "vkCmdEndDebugUtilsLabelEXT");
-	CTX.msaaSamples = getMaxUsableSampleCount();
-	CTX.cmdbuf = CTX.cmdbufs[(VK_CTX.cmdbuf_index+1)%CTX.cmdbufs.size()];
-
-
 	CTX.cmdbuf = CTX.cmdbufs[VK_CTX.cmdbuf_index%CTX.cmdbufs.size()];
+	CTX.buf_delq = &CTX.buf_delqs[VK_CTX.cmdbuf_index%CTX.cmdbufs.size()];
+	CTX.tex_delq = &CTX.tex_delqs[VK_CTX.cmdbuf_index%CTX.cmdbufs.size()];
 	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
 	VkCommandBufferBeginInfo begin{};
 	begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -790,6 +781,20 @@ vk_ctx_init(const char *name, int width, int height)
 	begin.pInheritanceInfo = nullptr;
 	auto ret = vkBeginCommandBuffer(cmdbuf, &begin);
 	assert(ret == VK_SUCCESS);
+
+
+
+	create_engine_descriptor_set();
+
+
+
+	CTX.depth_format = find_depth_format();
+	std::cout << "The GPU has a minimum buffer alignment of " <<
+		CTX.properties.limits.minUniformBufferOffsetAlignment << std::endl;
+
+	CTX.vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(VK_CTX.instance, "vkCmdBeginDebugUtilsLabelEXT");
+	CTX.vkCmdEndDebugUtilsLabelEXT = (PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(VK_CTX.instance, "vkCmdEndDebugUtilsLabelEXT");
+	CTX.msaaSamples = getMaxUsableSampleCount();
 
 	return 0;
 
@@ -812,7 +817,12 @@ vk_ctx_frame_end()
 	CTX.frame_index = (CTX.frame_index + 1) % conf::MAX_FRAMES_IN_FLIGHT;
 	CTX.cmdbuf_index++;
 
-	CTX.cmdbuf = CTX.cmdbufs[VK_CTX.cmdbuf_index%CTX.cmdbufs.size()];
+	int cmdidx = VK_CTX.cmdbuf_index%CTX.cmdbufs.size();
+
+
+	CTX.cmdbuf = CTX.cmdbufs[cmdidx];
+	CTX.buf_delq = &CTX.buf_delqs[cmdidx];
+	CTX.tex_delq = &CTX.tex_delqs[cmdidx];
 	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
 	VkCommandBufferBeginInfo begin{};
 	begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -820,6 +830,8 @@ vk_ctx_frame_end()
 	begin.pInheritanceInfo = nullptr;
 	auto ret = vkBeginCommandBuffer(cmdbuf, &begin);
 	assert(ret == VK_SUCCESS);
+	CTX.buf_delq->flush();
+	CTX.tex_delq->flush();
 }
 
 void

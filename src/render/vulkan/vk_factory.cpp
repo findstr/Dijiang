@@ -1,6 +1,5 @@
 #include "vk_cubemap.h"
 #include "vk_debugger.h"
-#include "vk_mesh.h"
 #include "vk_texture2d.h"
 #include "vk_render_texture.h"
 

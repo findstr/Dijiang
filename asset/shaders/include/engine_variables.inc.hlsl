@@ -21,9 +21,13 @@ cbuffer engine_per_camera : register(b1, space1) {
 
 struct engine_per_object {
 	int material;
-	int dummy[3];
+	int skeleton;
+	int dummy[2];
 	float4x4 engine_matrix_model;
 	float4x4 engine_matrix_model_view_proj;
+};
+
+struct engine_skeleton {
 	float4x4 engine_skeleton_matrix[ENGINE_MAX_BONE_PER_SKELETON];
 };
 

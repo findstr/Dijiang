@@ -34,7 +34,6 @@ struct per_object {
 	int dummy[3];
 	glm::mat4 model;
 	glm::mat4 model_view_proj;
-	std::array<glm::mat4, ENGINE_MAX_BONE_PER_SKELETON> skeleton_pose;
 };
 
 }}};

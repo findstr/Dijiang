@@ -1,7 +1,5 @@
 #include <assert.h>
 #include "vk_object.h"
-#include "samplermgr.h"
-#include "cmdbuf.h"
 #include "vk_buffer.h"
 #include "vk_texture.h"
 #include "vk_filter.h"
