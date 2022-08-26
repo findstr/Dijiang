@@ -1,6 +1,6 @@
 #include "level.h"
 #include "light.h"
-#include "system/render_system.h"
+#include "graphics.h"
 
 namespace engine {
 

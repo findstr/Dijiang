@@ -1,5 +1,5 @@
 #include "level.h"
-#include "system/render_system.h"
+#include "graphics.h"
 #include "animation/skeleton.h"
 #include "components/animator.h"
 #include "render/debugger.h"
@@ -177,7 +177,7 @@ scene_camera::render()
 {
 	/*
 	level::cull(this, draw_list, render_pass::FORWARD);
-	RENDER_SYSTEM.set_camera(this);
+	graphics.set_camera(this);
 	if (show_skeleton) {
 		for (auto &d:draw_list) {
 			if (d.skeleton_pose == nullptr)
@@ -207,15 +207,15 @@ scene_camera::render()
 				draw_light(cam, li);
 		}
 	}
-	RENDER_SYSTEM.renderpass_begin(render_target);
+	graphics.renderpass_begin(render_target);
 	for (auto &d:draw_list)
-		RENDER_SYSTEM.draw(d);
+		graphics.draw(d);
 	draw_list.clear();
 	render::debugger::inst().cull(this, draw_list);
 	for (auto &d:draw_list)
-		RENDER_SYSTEM.draw(d);
+		graphics.draw(d);
 	draw_list.clear();
-	RENDER_SYSTEM.renderpass_end();
+	graphics.renderpass_end();
 	*/
 }
 

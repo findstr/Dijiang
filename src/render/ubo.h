@@ -10,10 +10,9 @@
 #include "../../asset/shaders/include/engine_constant.inc.hlsl"
 
 namespace engine {
-namespace render {
 namespace ubo {
 
-struct per_frame {
+struct lights {
 	glm::vec4 engine_light_ambient;
 	glm::vec4 engine_light_position;
 	glm::vec4 engine_light_direction;
@@ -22,7 +21,7 @@ struct per_frame {
 	glm::mat4 engine_light_matrix_project[ENGINE_MAX_DIRECTIONAL_LIGHT];
 };
 
-struct per_camera {
+struct camera {
 	glm::mat4 view;
 	glm::mat4 proj;
 	glm::mat4 view_proj;
@@ -36,5 +35,5 @@ struct per_object {
 	glm::mat4 model_view_proj;
 };
 
-}}};
+}};
 

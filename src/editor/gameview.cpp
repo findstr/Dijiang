@@ -6,7 +6,7 @@
 #include "vulkan/vk_ctx.h"
 #include "components/camera.h"
 #include "render/draw_object.h"
-#include "system/render_system.h"
+#include "graphics.h"
 #include "input.h"
 #include "level.h"
 #include "gameview.h"

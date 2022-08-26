@@ -217,10 +217,6 @@ gpu_mesh::bind_info(mesh_handle_t h, VkBuffer *vertex, int *vertex_offset, VkBuf
 	return md.index_count;
 }
 
-void
-gpu_mesh::post_tick()
-{
-}
 
 
 }}

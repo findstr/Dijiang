@@ -41,27 +41,7 @@ static std::unordered_map<std::string, std::shared_ptr<render::shader>> shader_p
 void
 init()
 {
-	YAML::Node root = YAML::LoadFile("asset/lighting.asset");
-	auto brdf = root["brdf_texture"];
-	auto skybox = root["skybox"];
-	auto skybox_specular = skybox["specular"];
-	auto skybox_irradiance = skybox["irradiance"];
-	LIGHTING_ASSET.brdf_texture = load_texture2d(brdf["file"].as<std::string>());
-	std::array<std::string, render::cubemap::FACE_COUNT> pathes;
-	pathes[0] = skybox_specular["x+"].as<std::string>();
-	pathes[1] = skybox_specular["x-"].as<std::string>();
-	pathes[2] = skybox_specular["y+"].as<std::string>();
-	pathes[3] = skybox_specular["y-"].as<std::string>();
-	pathes[4] = skybox_specular["z+"].as<std::string>();
-	pathes[5] = skybox_specular["z-"].as<std::string>();
-	LIGHTING_ASSET.skybox_specular = load_cubemap(pathes);
-	pathes[0] = skybox_irradiance["x+"].as<std::string>();
-	pathes[1] = skybox_irradiance["x-"].as<std::string>();
-	pathes[2] = skybox_irradiance["y+"].as<std::string>();
-	pathes[3] = skybox_irradiance["y-"].as<std::string>();
-	pathes[4] = skybox_irradiance["z+"].as<std::string>();
-	pathes[5] = skybox_irradiance["z-"].as<std::string>();
-	LIGHTING_ASSET.skybox_irradiance = load_cubemap(pathes);
+
 }
 
 void

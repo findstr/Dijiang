@@ -1,4 +1,3 @@
-#include "system/render_system.h"
 #include "level.h"
 #include "render_pass.h"
 #include "render/vulkan/vk_ctx.h"
@@ -7,36 +6,41 @@
 #include "render/vulkan/vk_shader.h"
 #include "render/vulkan/vk_shader_variables.h"
 #include "render/gpu_interface.h"
+#include "render/vulkan/vk_set_write.h"
+#include "vk_graphics.h"
+#include "vk_ctx.h"
 
 namespace engine {
 namespace vulkan {
-#if 0
 
-
-render_system::render_system()
+void
+vk_graphics::init()
 {
 	int width, height;
 	vulkan::vk_surface::inst().init("帝江", 1024, 768);
 	vulkan::vk_surface::inst().resolution(&width, &height);
 	vulkan::vk_ctx_init("帝江", width, height);
 	vulkan::vk_surface::inst().init_ui(&vulkan::VK_CTX.surface);
-	uniform_per_frame.reset(new vulkan::vk_uniform<render::ubo::per_frame, vulkan::ENGINE_PER_FRAME_BINDING>());
-	uniform_per_camera.reset(new vulkan::vk_uniform<render::ubo::per_camera, vulkan::ENGINE_PER_CAMERA_BINDING>());
-	uniform_per_object.reset(new vulkan::vk_uniform<render::ubo::per_object, vulkan::ENGINE_PER_OBJECT_BINDING>());
+
+	auto *ptr = uniform_lights.get();
+
+	uniform_lights.reset(new vulkan::vk_uniform<ubo::lights, vulkan::ENGINE_PER_FRAME_BINDING>());
+	uniform_camera.reset(new vulkan::vk_uniform<ubo::camera, vulkan::ENGINE_PER_CAMERA_BINDING>());
 	for (int i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
 		indirect_cmd_count[i] = 0;
 		indirect_buffer[i].create(vulkan::vk_buffer::type::INDIRECT, 1024*sizeof(VkDrawIndexedIndirectCommand));
 	}
 }
-	
-render_system::~render_system()
+
+void
+vk_graphics::cleanup()
 {
 	vulkan::vk_surface::inst().exit();
 	vulkan::vk_ctx_cleanup();
 }
 
 void
-render_system::get_resolution(int *x, int *y)
+vk_graphics::get_resolution(int *x, int *y)
 {
 	*x = vulkan::VK_CTX.swapchain.extent.width;
 	*y = vulkan::VK_CTX.swapchain.extent.height;
@@ -56,80 +60,25 @@ to_mat4(const matrix4f &m)
 }
 
 static void
-update_uniformbuffer_per_object(render::ubo::per_camera *ubo_cam, render::ubo::per_object *ubo, const draw_object &draw) 
+update_uniformbuffer_per_object(ubo::camera *ubo_cam, ubo::per_object *ubo, const draw_object &draw) 
 {
 	ubo->material = draw.material_offset;
 	ubo->model = to_mat4(draw.go->transform.local_to_world_matrix());
 	ubo->model_view_proj = ubo_cam->view_proj * ubo->model;
 	if (draw.skeleton_pose != nullptr) {
+		/*
 		int bone_count = std::min(draw.skeleton_pose->size(), ubo->skeleton_pose.size());
 		for (int k = 0; k < bone_count; k++) {
 			ubo->skeleton_pose[k] = to_mat4((*draw.skeleton_pose)[k].matrix);
 		}
+		*/
 	}
 }
-	
-void
-render_system::init_lighting()
-{
-	vulkan::vk_ctx_init_lighting();
-}
-
-int
-render_system::frame_begin(float delta)
-{
-	int width, height;
-	vulkan::vk_surface::inst().pre_tick(delta);
-	vulkan::vk_ctx_frame_begin();
-	auto result = vulkan::VK_CTX.swapchain.acquire();
-	switch (result) {
-	case vulkan::vk_swapchain::acquire_result::NOT_READY:
-		acquire_success = false;
-		return 0;
-	case vulkan::vk_swapchain::acquire_result::RECREATE_SWAPCHAIN:
-		vulkan::vk_surface::inst().resolution(&width, &height);
-		vulkan::VK_CTX.swapchain.resize(width, height);
-		return 1;
-	case vulkan::vk_swapchain::acquire_result::SUCCESS:
-		break;
-	}
-	vulkan::vk_surface::inst().tick(delta);
-	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
-	std::array<VkClearValue, 2> clearColor{};
-	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
-	clearColor[1].depthStencil = { 1.0f, 0 };
-	vkResetCommandBuffer(cmdbuf, 0);
-
-	VkCommandBufferBeginInfo begin{};
-	begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	begin.flags = 0;
-	begin.pInheritanceInfo = nullptr;
-	if (vkBeginCommandBuffer(cmdbuf, &begin) != VK_SUCCESS)
-		return 1;
 
 	
-	uniform_per_frame->frame_begin(1024);
-	uniform_per_camera->frame_begin(1024);
-	uniform_per_object->frame_begin(1024);
-
-	return 0;
-}
-
-void 
-render_system::renderpass_begin(render_texture *rt)
-{
-	vulkan::vk_ctx_renderpass_begin(rt);
-	gpu_mesh::instance().flush();
-}
-
+#if 0
 void
-render_system::renderpass_end()
-{
-	vulkan::vk_ctx_renderpass_end();
-}
-	
-void
-render_system::shadowpass_begin()
+vk_graphics::shadowpass_begin()
 {
 	if (shadow_texture == nullptr) {
 		shadow_texture.reset(render_texture::create(
@@ -207,95 +156,13 @@ render_system::shadowpass_begin()
 }
 
 void
-render_system::shadowpass_end()
+vk_graphics::shadowpass_end()
 {
 	vulkan::vk_ctx_debug_label_end();
 	vkCmdEndRenderPass(vulkan::VK_CTX.cmdbuf);
 }
 	
-void 
-render_system::set_light(light *li, camera *cam)
-{
-	vector3f center;
-	ubo_per_frame = uniform_per_frame->alloc();
-	vector3f direction = li->direction().normalized();
-	auto c = li->color;
-	c.r *= li->intensity;
-	c.g *= li->intensity;
-	c.b *= li->intensity;
-	ubo_per_frame->engine_light_ambient = glm::vec4(1.0f);
-	ubo_per_frame->engine_light_direction.x = direction.x();
-	ubo_per_frame->engine_light_direction.y = direction.y();
-	ubo_per_frame->engine_light_direction.z = direction.z();
-	ubo_per_frame->engine_light_radiance = glm::vec4(c.r, c.g, c.b, 1.0f);
-
-	li->get_shadow_matrix(cam,
-		center,
-		ubo_per_frame->engine_light_matrix_view[0],
-		ubo_per_frame->engine_light_matrix_project[0]);
-	ubo_offset[vulkan::ENGINE_PER_FRAME_BINDING] = uniform_per_frame->offset();
-	uniform_per_frame->unmap();
-}
-
-
-void
-render_system::set_light_camera(light *li, camera *cam)
-{
-	vector3f center;
-	ubo_per_camera = uniform_per_camera->alloc();
-	li->get_shadow_matrix(cam, center, 
-		ubo_per_camera->view, 
-		ubo_per_camera->proj);
-	ubo_per_camera->engine_camera_pos = glm::vec4(center.x(), center.y(), center.z(), 1.0f);
-	ubo_offset[vulkan::ENGINE_PER_CAMERA_BINDING] = uniform_per_camera->offset();
-	uniform_per_camera->unmap();
-}
-
-void 
-render_system::set_camera(camera *cam)
-{
-	ubo_per_camera = uniform_per_camera->alloc();
-	auto eye = cam->transform->position();
-	auto eye_dir = eye + cam->forward() * 5.0f;
-	auto up = cam->up();
-	ubo_per_camera->engine_camera_pos = glm::vec4(
-		cam->transform->position().x(),
-		cam->transform->position().y(),
-		cam->transform->position().z(), 1.0);
-	ubo_per_camera->view = glm::lookAt(
-			glm::vec3(eye.x(), eye.y(), eye.z()),
-			glm::vec3(eye_dir.x(), eye_dir.y(), eye_dir.z()),
-			glm::vec3(up.x(), up.y(), up.z()));
-	if (cam->perspective) {
-		ubo_per_camera->proj = glm::perspectiveRH_ZO(
-			glm::radians(cam->fov), cam->aspect,
-			cam->clip_near_plane, cam->clip_far_plane);
-	} else {
-		ubo_per_camera->proj = glm::orthoRH_ZO(
-			-cam->orthographic_size, cam->orthographic_size,
-			-cam->orthographic_size, cam->orthographic_size, 
-			cam->clip_near_plane, cam->clip_far_plane);
-	}
-	ubo_per_camera->proj[1][1] *= -1;
-	ubo_per_camera->view_proj = ubo_per_camera->proj * ubo_per_camera->view;
-	ubo_offset[vulkan::ENGINE_PER_CAMERA_BINDING] = uniform_per_camera->offset();
-	viewport.x = cam->viewport.x * vulkan::VK_CTX.swapchain.extent.width;
-	viewport.y = cam->viewport.y * vulkan::VK_CTX.swapchain.extent.height;
-	viewport.width = cam->viewport.width * vulkan::VK_CTX.swapchain.extent.width;
-	viewport.height = cam->viewport.height * vulkan::VK_CTX.swapchain.extent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-	uniform_per_camera->unmap();
-}
-
-int ssbo_offset = 0;
-int indirect_offset = 0;
-
-	
-void
-render_system::init_for_object(std::vector<draw_object> &draw_list)
-{
-}
+#endif
 
 struct indirect_batch {
 	int material_offset = 0;
@@ -368,23 +235,81 @@ compact_draws(std::vector<draw_object> &draw_list, std::vector<material_info> &m
 	}
 	return draws;
 }
+	
+void 
+vk_graphics::bind_reset() 
+{
+	ubo_camera_dirty = true;
+	ubo_lights_dirty = true;
+	binding_vertex_buffer = VK_NULL_HANDLE;
+	binding_index_buffer = VK_NULL_HANDLE;
+}
+
+void 
+vk_graphics::bind_ubo() 
+{
+	if (ubo_camera_dirty) {
+		ubo_camera_dirty = false;
+		auto ubo_per_camera = uniform_camera->alloc();
+		*ubo_per_camera = ubo_camera;
+		ubo_offset[vulkan::ENGINE_PER_CAMERA_BINDING] = uniform_camera->offset();
+		uniform_camera->unmap();
+	}
+	if (ubo_lights_dirty) {
+		ubo_lights_dirty = false;
+		auto *ubo_per_frame = uniform_lights->alloc();
+		*ubo_per_frame = ubo_lights;
+		ubo_offset[vulkan::ENGINE_PER_FRAME_BINDING] = uniform_lights->offset();
+		uniform_lights->unmap();	
+	}
+	vkCmdBindDescriptorSets(
+		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vulkan::VK_CTX.engine_bindless_pipeline_layout,
+		1,
+		1, &vulkan::VK_CTX.engine_desc_set[vulkan::VK_CTX.frame_index],
+		ubo_offset.size(), ubo_offset.data());
+}
+
+void 
+vk_graphics::bind_mesh(VkBuffer vertex, VkBuffer index) 
+{
+	if (vertex != binding_vertex_buffer) {
+		binding_vertex_buffer = vertex;
+		VkBuffer vertexBuffers[] = { vertex };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(vulkan::VK_CTX.cmdbuf, 0, 1, vertexBuffers, offsets);
+	}
+	if (index != binding_index_buffer) {
+		binding_index_buffer = index;
+		vkCmdBindIndexBuffer(vulkan::VK_CTX.cmdbuf, index, 0, VK_INDEX_TYPE_UINT32);
+	}
+}
 
 void
-render_system::draw(std::vector<draw_object> &draw_list)
+vk_graphics::draw(std::vector<draw_object> &draw_list, rect &rt)
 {
-	VkPipelineLayout last_binding_layout = VK_NULL_HANDLE;
 	VkPipeline last_binding_pipeline = VK_NULL_HANDLE;
 	render::material *last_binding_mat = VK_NULL_HANDLE;
 	VkBuffer last_vertex_buffer = VK_NULL_HANDLE;
 	VkBuffer last_index_buffer = VK_NULL_HANDLE;
-	ubo_offset[vulkan::ENGINE_PER_OBJECT_BINDING] = 0;
-#if IS_EDITOR
-	VkRect2D scissor = {};
-	scissor.offset = { 0, 0 };
-	scissor.extent = {(uint32_t) viewport.width, (uint32_t)viewport.height };
-	vkCmdSetScissor(vulkan::VK_CTX.cmdbuf, 0, 1, &scissor);
-#endif
+
+	auto vk_rt = (vk_render_texture *)render_target;
+	VK_CTX.current_renderpass = vk_rt->render_pass;
+	VK_CTX.current_framebuffer = vk_rt->framebuffer();
+	VK_CTX.enable_msaa = vk_rt->enable_msaa;
+	vk_rt->begin();
+
+	VkViewport viewport;
+	viewport.x = rt.x;
+	viewport.y = rt.y;
+	viewport.width = rt.width * vulkan::VK_CTX.swapchain.extent.width;
+	viewport.height = rt.height * vulkan::VK_CTX.swapchain.extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(vulkan::VK_CTX.cmdbuf, 0, 1, &viewport);
+
+	bind_ubo();
+
 	std::vector<material_info> materials;
 	auto draw_batches = compact_draws(draw_list, materials);
 	uint8_t *material_buffer = (uint8_t *)vulkan::VK_CTX.engine_bindless_material[vulkan::VK_CTX.frame_index]->map();
@@ -395,49 +320,23 @@ render_system::draw(std::vector<draw_object> &draw_list)
 	vulkan::VK_CTX.engine_bindless_material[vulkan::VK_CTX.frame_index]->unmap();
 	
 
-	auto *ubo = (render::ubo::per_object *)vulkan::VK_CTX.engine_bindless_object[vulkan::VK_CTX.frame_index]->map();
+	auto *ubo = (ubo::per_object *)vulkan::VK_CTX.engine_bindless_object[vulkan::VK_CTX.frame_index]->map();
 	for (int i = 0; i < draw_list.size(); i++) {
 		auto &draw = draw_list[i];
-		update_uniformbuffer_per_object(ubo_per_camera, &ubo[i], draw);
+		auto u = &ubo[ssbo_offset + i];
+		update_uniformbuffer_per_object(&ubo_camera, u, draw);
 	}
-	vulkan::VK_CTX.engine_bindless_object[vulkan::VK_CTX.frame_index]->unmap(ssbo_offset * sizeof(*ubo), draw_list.size() * sizeof(*ubo));
+	vulkan::VK_CTX.engine_bindless_object[vulkan::VK_CTX.frame_index]->unmap();// ssbo_offset * sizeof(*ubo), draw_list.size() * sizeof(*ubo));
 	ssbo_offset += draw_list.size();
+
+
+
 	int indirect_count = 0;
 	auto *indirect_cmd = (VkDrawIndexedIndirectCommand *)indirect_buffer[vulkan::VK_CTX.frame_index].map();
 	int drawcall = 0;
 	for (auto &draw:draw_batches) {
 		auto mat = draw.material;
 		auto *shader = (engine::vulkan::vk_shader *)mat->get_shader();
-		if (mat != last_binding_mat) {
-			last_binding_mat = mat;
-			vkCmdBindDescriptorSets(
-				vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				vulkan::VK_CTX.engine_bindless_pipeline_layout,
-				1,
-				1, &vulkan::VK_CTX.engine_desc_set[vulkan::VK_CTX.frame_index],
-				ubo_offset.size(), ubo_offset.data());
-		}
-		if (last_binding_layout != vulkan::VK_CTX.engine_bindless_pipeline_layout) {
-			last_binding_layout = vulkan::VK_CTX.engine_bindless_pipeline_layout;
-			vkCmdBindDescriptorSets(
-				vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				last_binding_layout,
-				2,
-				1, &vulkan::VK_CTX.engine_bindless_texture_set,
-				0, nullptr);
-			vkCmdBindDescriptorSets(
-				vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				last_binding_layout,
-				3,
-				1, &vulkan::VK_CTX.engine_bindless_object_set[vulkan::VK_CTX.frame_index],
-				0, nullptr);
-			vkCmdBindDescriptorSets(
-				vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				last_binding_layout,
-				4,
-				1, &vulkan::VK_CTX.engine_bindless_material_set[vulkan::VK_CTX.frame_index],
-				0, nullptr);
-		}
 		auto pipeline =  shader->pipeline(vulkan::VK_CTX.current_renderpass, vulkan::VK_CTX.enable_msaa).handle;
 		if (pipeline != last_binding_pipeline) {
 			last_binding_pipeline = pipeline;
@@ -452,16 +351,7 @@ render_system::draw(std::vector<draw_object> &draw_list)
 			indirect_offset += indirect_count * sizeof(*indirect_cmd);
 			indirect_count = 0;
 		}
-		if (draw.vertex_buffer != last_vertex_buffer) {
-			last_vertex_buffer = draw.vertex_buffer;
-			VkBuffer vertexBuffers[] = { draw.vertex_buffer };
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(vulkan::VK_CTX.cmdbuf, 0, 1, vertexBuffers, offsets);
-		}
-		if (draw.index_buffer != last_index_buffer) {
-			last_index_buffer = draw.index_buffer;
-			vkCmdBindIndexBuffer(vulkan::VK_CTX.cmdbuf, draw.index_buffer, 0, VK_INDEX_TYPE_UINT32);
-		}
+		bind_mesh(draw.vertex_buffer, draw.index_buffer);
 		auto &cmd = indirect_cmd[indirect_count++];
 		cmd.firstIndex = draw.index_offset;
 		cmd.firstInstance = draw.first;
@@ -476,32 +366,83 @@ render_system::draw(std::vector<draw_object> &draw_list)
 			indirect_offset, indirect_count, sizeof(*indirect_cmd));
 	}
 	indirect_buffer[vulkan::VK_CTX.frame_index].unmap();
+
+	vulkan::vk_ctx_renderpass_end();
 }
 
+void
+vk_graphics::pre_tick(float delta)
+{
+	vulkan::vk_set_write::inst().flush();
+	gpu_mesh::instance().flush();
+	vulkan::vk_ctx_frame_begin();
+	vulkan::vk_surface::inst().pre_tick(delta);
+
+	uniform_lights->frame_begin(1024);
+	uniform_camera->frame_begin(1024);
+
+	for (int i = 0; i < ubo_offset.size(); i++)
+		ubo_offset[i] = 0;
+	
+	vkCmdBindDescriptorSets(
+		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vulkan::VK_CTX.engine_bindless_pipeline_layout,
+		2,
+		1, &vulkan::VK_CTX.engine_bindless_texture_set,
+		0, nullptr);
+	vkCmdBindDescriptorSets(
+		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vulkan::VK_CTX.engine_bindless_pipeline_layout,
+		3,
+		1, &vulkan::VK_CTX.engine_bindless_object_set[vulkan::VK_CTX.frame_index],
+		0, nullptr);
+	vkCmdBindDescriptorSets(
+		vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vulkan::VK_CTX.engine_bindless_pipeline_layout,
+		4,
+		1, &vulkan::VK_CTX.engine_bindless_material_set[vulkan::VK_CTX.frame_index],
+		0, nullptr);
+	bind_reset();
+}
 
 void
-render_system::frame_end(float delta)
+vk_graphics::tick(float delta)
 {
 	ssbo_offset = 0;
 	indirect_offset = 0;
-	vulkan::vk_surface::inst().post_tick(delta);
-	gpu_mesh::instance().post_tick();
-	uniform_per_frame->frame_end();
-	uniform_per_camera->frame_end();
-	uniform_per_object->frame_end();
-}
-
-void
-render_system::frame_submit()
-{
+	int width, height;
+	auto result = vulkan::VK_CTX.swapchain.acquire();
+	switch (result) {
+	case vulkan::vk_swapchain::acquire_result::NOT_READY:
+		vkEndCommandBuffer(vulkan::VK_CTX.cmdbuf);
+		acquire_success = false;
+		return ;
+	case vulkan::vk_swapchain::acquire_result::RECREATE_SWAPCHAIN:
+		vulkan::vk_surface::inst().resolution(&width, &height);
+		vulkan::VK_CTX.swapchain.resize(width, height);
+		vkEndCommandBuffer(vulkan::VK_CTX.cmdbuf);
+		return ;
+	case vulkan::vk_swapchain::acquire_result::SUCCESS:
+		break;
+	}
+	vulkan::vk_surface::inst().tick(delta);
 	if (vkEndCommandBuffer(vulkan::VK_CTX.cmdbuf) != VK_SUCCESS)
 		return ;
 	vulkan::VK_CTX.swapchain.submit(vulkan::VK_CTX.cmdbuf);
-	vulkan::vk_ctx_frame_end();
 }
 
 void
-render_system::show_fps(int fps)
+vk_graphics::post_tick(float delta)
+{
+	vulkan::vk_surface::inst().post_tick(delta);
+	vulkan::vk_ctx_frame_end();
+	uniform_lights->frame_end();
+	uniform_camera->frame_end();
+	return ;
+}
+
+void
+vk_graphics::show_fps(int fps)
 {
 	char buf[256];
 	snprintf(buf, sizeof(buf), "帝江(%d FPS)", fps);
@@ -509,16 +450,10 @@ render_system::show_fps(int fps)
 }
 
 bool
-render_system::is_running()
+vk_graphics::is_running()
 {
 	return vulkan::vk_surface::inst().is_running();
 }
 
-
-#else
-
-
-#endif
-
-
 }}
+

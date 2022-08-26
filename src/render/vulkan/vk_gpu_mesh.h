@@ -29,7 +29,6 @@ public:
 	}
 	void flush();
 	int bind_info(mesh_handle_t h, VkBuffer *vertex, int *vertex_offset, VkBuffer *index, int *index_offset);
-	void post_tick();
 private:
 	struct mem_chunk {
 		mem_chunk() {}

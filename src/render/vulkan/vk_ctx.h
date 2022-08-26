@@ -59,7 +59,6 @@ namespace vulkan {
 	int vk_ctx_init(const char *name, int width, int height);
 	void vk_ctx_init_lighting();
 	void vk_ctx_frame_begin();
-	void vk_ctx_reset_cmbuf();
 	void vk_ctx_frame_end();
 	void vk_ctx_renderpass_begin(render_texture *rt);
 	void vk_ctx_renderpass_end();

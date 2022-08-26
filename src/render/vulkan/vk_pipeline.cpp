@@ -130,9 +130,6 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa)
 	colorBlending.blendConstants[3] = 0.0f;
 
 	VkDynamicState dynamicStates[] = {
-	#if IS_EDITOR 
-		VK_DYNAMIC_STATE_SCISSOR,
-	#endif
 		VK_DYNAMIC_STATE_VIEWPORT,
 	};
 	VkPipelineDynamicStateCreateInfo dynamicState = {};

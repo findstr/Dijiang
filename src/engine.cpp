@@ -3,6 +3,7 @@
 #include "render/input.h"
 #include "render/debugger.h"
 #include "level.h"
+#include "graphics.h"
 #include "components/camera.h"
 #include "engine.h"
 
@@ -11,10 +12,7 @@ namespace engine {
 void
 engine::init()
 {
-	luavm::init();
-	resource::init();
-	render::debugger::inst().init();
-	level::load("asset/terrain.level");
+
 }
 
 bool

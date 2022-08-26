@@ -805,11 +805,6 @@ vk_ctx_frame_begin()
 {
 }
 
-void 
-vk_ctx_reset_cmbuf()
-{
-	vkResetCommandBuffer(CTX.cmdbufs[(VK_CTX.cmdbuf_index + 1) % CTX.cmdbufs.size()], 0);
-}
 
 void 
 vk_ctx_frame_end()
@@ -819,11 +814,11 @@ vk_ctx_frame_end()
 
 	int cmdidx = VK_CTX.cmdbuf_index%CTX.cmdbufs.size();
 
-
 	CTX.cmdbuf = CTX.cmdbufs[cmdidx];
 	CTX.buf_delq = &CTX.buf_delqs[cmdidx];
 	CTX.tex_delq = &CTX.tex_delqs[cmdidx];
 	auto &cmdbuf = vulkan::VK_CTX.cmdbuf;
+	vkResetCommandBuffer(cmdbuf, 0);
 	VkCommandBufferBeginInfo begin{};
 	begin.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	begin.flags = 0;

@@ -5,7 +5,7 @@
 #include "sceneview.h"
 #include "input.h"
 #include "backends/imgui_impl_vulkan.h"
-#include "system/render_system.h"
+#include "graphics.h"
 #include "render/debugger.h"
 
 namespace engine {

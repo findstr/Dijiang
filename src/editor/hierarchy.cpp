@@ -3,7 +3,7 @@
 #include "imgui_internal.h"
 #include "level.h"
 #include "hierarchy.h"
-#include "system/render_system.h"
+#include "graphics.h"
 #include "render/debugger.h"
 
 namespace engine {

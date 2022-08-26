@@ -254,12 +254,6 @@ vk_surface::init_ui(VkSurfaceKHR *surface)
 void
 vk_surface::pre_tick(float delta)
 {
-
-}
-
-void
-vk_surface::tick(float delta)
-{
 	SDL_Event e;
 	while (SDL_PollEvent(&e) != 0) {
 		ImGui_ImplSDL2_ProcessEvent(&e);
@@ -277,8 +271,8 @@ vk_surface::tick(float delta)
 	ImGui::NewFrame();
 }
 
-void 
-vk_surface::post_tick(float delta)
+void
+vk_surface::tick(float delta)
 {
 	vk_ctx_renderpass_begin(nullptr);
 
@@ -286,7 +280,11 @@ vk_surface::post_tick(float delta)
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), VK_CTX.cmdbuf);
 	
 	vk_ctx_renderpass_end();
-	
+}
+
+void 
+vk_surface::post_tick(float delta)
+{
 	ImGui::UpdatePlatformWindows();
 	ImGui::RenderPlatformWindowsDefault();
 }
