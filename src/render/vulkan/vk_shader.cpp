@@ -38,7 +38,7 @@ vk_shader::pipeline(VkRenderPass pass, bool enablemsaa)
 		if (iter.renderpass == pass)
 			return *iter.pipeline;
 	}
-	auto pl = vk_pipeline::create(pass, this, ztest, enablemsaa);
+	auto pl = vk_pipeline::create(pass, this, enablemsaa);
 	pipelines.emplace_back(pass, pl);
 	return *pl;
 }

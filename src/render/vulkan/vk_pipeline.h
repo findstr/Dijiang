@@ -9,8 +9,8 @@ public:
 	vk_pipeline(VkPipeline pl) :
 		handle(pl) {}
 	~vk_pipeline();
-	static vk_pipeline *create(VkRenderPass pass, vk_shader *shader, 
-		bool ztest = true, bool msaa = false);	
+	static vk_pipeline *create(VkRenderPass pass, 
+		vk_shader *shader, bool msaa = false);	
 public:
 	VkPipeline handle = VK_NULL_HANDLE;
 };

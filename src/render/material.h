@@ -72,10 +72,19 @@ public:
 		int index = shader->get_prop_index(id);
 		assert(index >= 0);
 		auto &p = properties[index];
-		p.type = shader::prop_type::TEXTURE2D;
+		switch (tex->type()) {
+		case render::texture::TEX2D:
+			p.type = shader::prop_type::TEXTURE2D;
+			break;
+		case render::texture::CUBE:
+			p.type = shader::prop_type::CUBEMAP;
+			break;
+		default:
+			assert(false);
+		}
 		p.texture = tex;
 		assert(shader->get_prop_type(id) == p.type);
-		gpu_block[index].texture = tex->handle;
+		gpu_block[index].texture = tex->handle();
 	}
 	void set_float(int id, float v) {
 		int index = shader->get_prop_index(id);

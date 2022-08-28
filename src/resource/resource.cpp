@@ -163,8 +163,7 @@ new_tex2d_by_meta(const std::string &file, int width, int height)
 		
 		root["mipmap"] = mipmap;
 		root["settings"] = settings;
-		int miplevels = render::texture::mip_levels(width, height);
-		t = render::texture2d::create(width, height, texture_format::RGBA32, false, miplevels);
+		t = new render::texture2d(width, height, texture_format::RGBA32, false, true);
 		t->anisolevels = 0;
 		t->wrap_mode_u = texture_wrap::CLAMP;
 		t->wrap_mode_v = texture_wrap::CLAMP;
@@ -177,11 +176,9 @@ new_tex2d_by_meta(const std::string &file, int width, int height)
 		assert(root["type"].as<std::string>() == "texture2d");
 		auto tex_linear = root["colorspace"].as<std::string>() == "linear";
 		auto format_str = root["format"].as<std::string>();
-		int tex_miplevels = 0;
-		if (root["mipmap"]["enable"].as<int>() != 0) 
-			tex_miplevels = render::texture::mip_levels(width, height);
-		t = render::texture2d::create(width, height,
-			name_to_format(format_str), tex_linear, tex_miplevels);
+		t = new render::texture2d(width, height,
+			name_to_format(format_str), tex_linear, 
+			(root["mipmap"]["enable"].as<int>() != 0));
 		auto settings = root["settings"];
 		t->anisolevels = settings["aniso"].as<int>();
 		t->wrap_mode_u = name_to_wrap(settings["wrap_u"].as<std::string>()); 
@@ -216,7 +213,7 @@ load_cubemap(const std::string &path)
 	ktxTexture *ktx_texture;
 	ktxResult result = ktxTexture_CreateFromNamedFile(path.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx_texture);
 	assert(result == KTX_SUCCESS);
-	auto *tex = render::cubemap::create(ktx_texture->baseWidth, ktx_texture->baseHeight);
+	auto *tex = new render::cubemap(ktx_texture->baseWidth, ktx_texture->baseHeight);
 	std::shared_ptr<render::texture> tex_ptr(tex);
 	ktx_uint8_t *ktx_data = ktxTexture_GetData(ktx_texture);
 	tex->miplevels = ktx_texture->numLevels;
@@ -280,7 +277,7 @@ load_cubemap(const std::array<std::string, render::cubemap::FACE_COUNT> &pathes)
 	int width, height;
 	std::vector<uint8_t> pixels_data;
 	load_tex_file(pathes[0], pixels_data, &width, &height);
-	auto *tex = render::cubemap::create(width, height);
+	auto *tex = new render::cubemap(width, height);
 	tex->miplevels = render::texture::mip_levels(width, height);;
 	tex->setpixel(faces[0], pixels_data);
 	for (int i = 1; i < render::cubemap::FACE_COUNT; i++) {
@@ -354,7 +351,9 @@ load_shader(const std::string &file)
 			auto name = n["name"].as<std::string>();
 			auto type = n["type"].as<std::string>();
 			render::shader::prop_type vtype;
-			if (type == "texture2d")
+			if (type == "cubemap")
+				vtype = render::shader::prop_type::CUBEMAP;
+			else if (type == "texture2d")
 				vtype = render::shader::prop_type::TEXTURE2D;
 			else if (type == "float")
 				vtype = render::shader::prop_type::FLOAT;

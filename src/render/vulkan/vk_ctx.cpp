@@ -642,6 +642,7 @@ create_engine_descriptor_set()
 void
 vk_ctx_init_lighting()
 {
+	/*
 	static struct {
 		render::texture *tex;
 		int binding;
@@ -687,7 +688,7 @@ vk_ctx_init_lighting()
 		static_cast<uint32_t>(descriptorWrite.size()),
 		descriptorWrite.data(), 0, nullptr);
 
-
+	*/
 }
 
 static VkFormat

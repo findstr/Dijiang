@@ -10,6 +10,7 @@ struct VSInput {
 struct VSOutput {
 	float4 pos : SV_POSITION;
 	float3 fragTexCoord : TEXCOORD0;
+	uint instanceId : SV_InstanceID;
 };
 
 VSOutput vert(VSInput input) {
@@ -21,15 +22,19 @@ VSOutput vert(VSInput input) {
 	float4x4 engine_matrix_model = engine_bindless_objects[input.instanceId].engine_matrix_model;
 	output.pos = mul(engine_matrix_proj, mul(v, mul(engine_matrix_model, float4(input.inPosition, 1.0))));
 	output.fragTexCoord = input.inPosition;
-	output.pos.z = output.pos.w * 0.999999;
+	output.pos.z = output.pos.w * 0.9999999;
+	output.instanceId = input.instanceId;
 	return output;
 }
 
-TextureCube tex;
-SamplerState tex_sampler;
+struct material {
+	uint tex;
+};
 
 float4 frag(VSOutput input) : SV_TARGET
 {
-	return tex.Sample(tex_sampler, input.fragTexCoord);
+	material mat = engine_bindless_material.Load<material>(engine_bindless_objects[input.instanceId].material);
+	float3 col =  engine_bindless_cubemap[mat.tex].Sample(engine_bindless_samplers[mat.tex], input.fragTexCoord).rgb;
+	return float4(col, 1);
 }
 

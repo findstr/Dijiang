@@ -113,12 +113,17 @@ level::cull(camera *cam, std::vector<draw_object> &list, enum render::shader::li
 		}
 	}
 	std::sort(list.begin(), list.end(), [](draw_object &a, draw_object &b) {
+		if (a.go->get_name() == "Skybox")
+			return false;
+		if (b.go->get_name() == "Skybox")
+			return true;
 		if (a.material < b.material)
 			return true;
 		else if (a.material == b.material)
 			return a.mesh < b.mesh;
 		else
 			return false;
+
 	});
 }
 

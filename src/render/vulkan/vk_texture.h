@@ -34,6 +34,9 @@ public:
 private:
 	friend delete_queue<vk_texture>;
 	void clear();
+public:
+
+
 };
 
 }}

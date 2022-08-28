@@ -207,8 +207,11 @@ vk_render_texture::begin()
 	std::array<VkClearValue, 3> clearColor{};
 	clearColor[0].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
 	clearColor[1].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
-	clearColor[1].depthStencil = { 1.0f, 0 };
-	clearColor[2].depthStencil = { 1.0f, 0 };
+	clearColor[2].color =  {{0.0f, 0.0f, 0.0f, 1.0f}} ;
+	if (!enable_msaa)
+		clearColor[1].depthStencil = { 1.0f, 0 };
+	else
+		clearColor[2].depthStencil = { 1.0f, 0 };
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = render_pass;
 	renderPassInfo.framebuffer = framebuffer();

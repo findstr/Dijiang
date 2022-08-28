@@ -33,7 +33,7 @@ public:
 		}
 	}
 	~mesh() {
-		if (handle_ != invalid_handle)
+		if (handle_ != INVALID_HANDLE)
 			gpu.unload_mesh(handle_);
 	}
 public:
@@ -48,7 +48,7 @@ public:
 	std::vector<int> triangles;
 	constexpr mesh_handle_t handle() { return handle_; }
 private:
-	mesh_handle_t handle_ = invalid_handle;
+	mesh_handle_t handle_ = INVALID_HANDLE;
 };
 
 }}

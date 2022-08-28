@@ -46,6 +46,7 @@ SamplerState    engine_shadowmap_sampler : register(s3, space1);
 
 
 Texture2D							engine_bindless_textures[] : register(t0, space2);
+TextureCube							engine_bindless_cubemap[] : register(t0, space2);
 SamplerState						engine_bindless_samplers[] : register(t0, space2);
 StructuredBuffer<engine_per_object>	engine_bindless_objects : register(t0, space3);
 ByteAddressBuffer					engine_bindless_material : register(t0, space4);

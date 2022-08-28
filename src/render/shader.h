@@ -34,6 +34,7 @@ public:
 		INT,
 		FLOAT,
 		TEXTURE2D,
+		CUBEMAP,
 	};
 	struct prop_desc {
 		int index;

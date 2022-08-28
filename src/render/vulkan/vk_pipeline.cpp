@@ -9,7 +9,7 @@ namespace engine {
 namespace vulkan {
 
 vk_pipeline *
-vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa)
+vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool msaa)
 {
 	VkPipeline pipeline = VK_NULL_HANDLE;
 	VkVertexInputBindingDescription bindingDesc{};
@@ -139,8 +139,8 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool ztest, bool msaa)
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencil.depthTestEnable = ztest ? VK_TRUE : VK_FALSE;
-	depthStencil.depthWriteEnable = VK_TRUE;
+	depthStencil.depthTestEnable = shader->ztest ? VK_TRUE : VK_FALSE;
+	depthStencil.depthWriteEnable = shader->zwrite ? VK_TRUE : VK_FALSE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
 	depthStencil.minDepthBounds = 0.0f;
