@@ -25,6 +25,7 @@ private:
 	void bind_reset();
 	void bind_ubo();
 	void bind_mesh(VkBuffer vertex, VkBuffer index);
+	bool need_switch_mesh(VkBuffer vertex, VkBuffer index);
 public:
 	void init();
 	void cleanup();

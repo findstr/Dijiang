@@ -269,7 +269,16 @@ vk_graphics::bind_ubo()
 		ubo_offset.size(), ubo_offset.data());
 }
 
-void 
+bool
+vk_graphics::need_switch_mesh(VkBuffer vertex, VkBuffer index) 
+{
+	return (vertex != binding_vertex_buffer) ||
+		(index != binding_index_buffer);
+}
+
+
+
+void
 vk_graphics::bind_mesh(VkBuffer vertex, VkBuffer index) 
 {
 	if (vertex != binding_vertex_buffer) {
@@ -337,11 +346,10 @@ vk_graphics::draw(std::vector<draw_object> &draw_list, rect &rt)
 		auto mat = draw.material;
 		auto *shader = (engine::vulkan::vk_shader *)mat->get_shader();
 		auto pipeline =  shader->pipeline(vulkan::VK_CTX.current_renderpass, vulkan::VK_CTX.enable_msaa).handle;
-		if (pipeline != last_binding_pipeline) {
-			last_binding_pipeline = pipeline;
-			vkCmdBindPipeline(vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-		}
-		if ((draw.vertex_buffer != last_vertex_buffer || draw.index_buffer != last_index_buffer) && indirect_count > 0) {
+		if (shader->zwrite == false)
+			int a = 3;
+		bool same_pipeline  = pipeline == last_binding_pipeline;
+		if ((need_switch_mesh(draw.vertex_buffer, draw.index_buffer) || !same_pipeline) && indirect_count > 0) {
 			++drawcall;
 			vkCmdDrawIndexedIndirect(vulkan::VK_CTX.cmdbuf,
 				indirect_buffer[vulkan::VK_CTX.frame_index].handle,
@@ -349,6 +357,10 @@ vk_graphics::draw(std::vector<draw_object> &draw_list, rect &rt)
 			indirect_cmd = &indirect_cmd[indirect_count];
 			indirect_offset += indirect_count * sizeof(*indirect_cmd);
 			indirect_count = 0;
+		}
+		if (!same_pipeline) {
+			last_binding_pipeline = pipeline;
+			vkCmdBindPipeline(vulkan::VK_CTX.cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 		}
 		bind_mesh(draw.vertex_buffer, draw.index_buffer);
 		auto &cmd = indirect_cmd[indirect_count++];

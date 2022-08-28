@@ -48,7 +48,7 @@ public:
 	};
 
 	static shader *create(const std::vector<stage_code> &stags);
-	
+	std::string name;
 	bool ztest = true;
 	bool zwrite = true;
 	bool topology_triangle = true;

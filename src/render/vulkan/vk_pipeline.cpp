@@ -141,7 +141,7 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool msaa)
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencil.depthTestEnable = shader->ztest ? VK_TRUE : VK_FALSE;
 	depthStencil.depthWriteEnable = shader->zwrite ? VK_TRUE : VK_FALSE;
-	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
 	depthStencil.minDepthBounds = 0.0f;
 	depthStencil.maxDepthBounds = 1.0f;
@@ -179,7 +179,7 @@ vk_pipeline::create(VkRenderPass pass, vk_shader *shader, bool msaa)
 	printf("create pipeline begin\n");
 	if (vkCreateGraphicsPipelines(VK_CTX.device, VK_CTX.pipeline_cache, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		return nullptr;
-	printf("create pipeline end\n");
+	printf("create pipeline end:%s->%p\n", shader->name.c_str(), pipeline);
 	return new vk_pipeline(pipeline);
 }
 

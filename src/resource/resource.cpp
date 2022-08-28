@@ -364,7 +364,9 @@ load_shader(const std::string &file)
 			s->add_prop(name, vtype);
 		}
 	}
-	return std::shared_ptr<render::shader>(s);
+	s->name = file;
+	shader.reset(s);
+	return shader;
 }
 
 std::shared_ptr<render::material>
