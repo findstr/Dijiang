@@ -5,7 +5,6 @@
 #include "render/vulkan/vk_surface.h"
 #include "render/vulkan/vk_shader.h"
 #include "render/vulkan/vk_shader_variables.h"
-#include "render/gpu_interface.h"
 #include "render/vulkan/vk_set_write.h"
 #include "vk_graphics.h"
 #include "vk_ctx.h"
@@ -196,8 +195,8 @@ compact_draws(std::vector<draw_object> &draw_list, std::vector<material_info> &m
 	first_draw.count = 1;
 	first_draw.material_offset = material_offset;
 	draw_list[0].material_offset = material_offset;
-	first_draw.index_count = gpu_mesh::instance().bind_info(
-		first_draw.mesh->handle,
+	first_draw.index_count = vk_mesh::inst().bind_info(
+		first_draw.mesh->handle(),
 		&first_draw.vertex_buffer,
 		&first_draw.vertex_offset,
 		&first_draw.index_buffer,
@@ -223,8 +222,8 @@ compact_draws(std::vector<draw_object> &draw_list, std::vector<material_info> &m
 			} else {
 				new_draw.material_offset = draws.back().material_offset;
 			}
-			new_draw.index_count = gpu_mesh::instance().bind_info(
-				new_draw.mesh->handle,
+			new_draw.index_count = vk_mesh::inst().bind_info(
+				new_draw.mesh->handle(),
 				&new_draw.vertex_buffer,
 				&new_draw.vertex_offset,
 				&new_draw.index_buffer,
@@ -239,8 +238,8 @@ compact_draws(std::vector<draw_object> &draw_list, std::vector<material_info> &m
 void 
 vk_graphics::bind_reset() 
 {
-	ubo_camera_dirty = true;
-	ubo_lights_dirty = true;
+	ubo_camera_dirty = false;
+	ubo_lights_dirty = false;
 	binding_vertex_buffer = VK_NULL_HANDLE;
 	binding_index_buffer = VK_NULL_HANDLE;
 }
@@ -374,7 +373,7 @@ void
 vk_graphics::pre_tick(float delta)
 {
 	vulkan::vk_set_write::inst().flush();
-	gpu_mesh::instance().flush();
+	vk_mesh::inst().flush();
 	vulkan::vk_ctx_frame_begin();
 	vulkan::vk_surface::inst().pre_tick(delta);
 

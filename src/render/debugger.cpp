@@ -29,7 +29,7 @@ debugger::cull(camera *cam, std::vector<draw_object> &list)
 	m->vertices = vertices;
 	m->colors = colors;
 	m->triangles = triangles;
-	m->set_dirty();
+	m->apply();
 	list.emplace_back(trans, m, mat.get());
 	return ;
 }

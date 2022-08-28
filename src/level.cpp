@@ -6,7 +6,6 @@
 #include "components/skinrender.h"
 #include "components/animator.h"
 #include "resource/resource.h"
-#include "render/gpu_interface.h"
 
 namespace engine {
 
@@ -94,10 +93,6 @@ level::cull(camera *cam, std::vector<draw_object> &list, enum render::shader::li
 				if (material == nullptr)
 					continue;
 				mesh = sr->get_mesh();
-				if (mesh->dirty) {
-					gpu_mesh::instance().upload(mesh);
-					continue;
-				}
 				auto *ani = (animator *)go->get_component("animator");
 				if (ani) {
 					auto &pose = ani->get_current_pose();
@@ -110,10 +105,6 @@ level::cull(camera *cam, std::vector<draw_object> &list, enum render::shader::li
 				if (material == nullptr)
 					continue;
 				mesh = mf->get_mesh();
-				if (mesh->dirty) {
-					gpu_mesh::instance().upload(mesh);
-					continue;
-				}
 				list.emplace_back(go->transform, mesh, material);
 			}
 		#if IS_EDITOR

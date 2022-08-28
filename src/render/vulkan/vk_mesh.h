@@ -3,27 +3,29 @@
 #include <array>
 #include <vector>
 #include "conf.h"
-#include "render/mesh.h"
+#include "math/math.h"
+#include "render/gpu_resource.h"
+#include "render/bone_weight.h"
 #include "vk_buffer.h"
 
 namespace engine {
 namespace vulkan {
 
-class gpu_mesh {
+class vk_mesh {
 public:
-	typedef int32_t mesh_handle_t;
-	static constexpr mesh_handle_t invalid = -1;
-	static gpu_mesh &instance() {
-		static gpu_mesh inst;
+	static vk_mesh &inst() {
+		static vk_mesh inst;
 		return inst;
 	}
 public:
-	constexpr void upload(const render::mesh *m) {
-		size_t n = m->vertices.size();
-		if (n > max_loading_vertex_count)
-			max_loading_vertex_count = n;
-		loadings.emplace_back(m);
-	}
+	mesh_handle_t upload(
+		const std::vector<vector3f> &vertices,
+		const std::vector<vector2f> &uv,
+		const std::vector<vector3f> &colors,
+		const std::vector<vector3f> &tangents,
+		const std::vector<vector3f> &normals,
+		const std::vector<bone_weight> &bone_weights,
+		const std::vector<int> &triangles);
 	constexpr void unload(mesh_handle_t h) {
 		unloadings.emplace_back(h);
 	}
@@ -42,6 +44,7 @@ private:
 		void free(VmaVirtualAllocation alloc);
 	};
 	struct mesh_desc {
+		bool loading;
 		int vertex_chunk;
 		int index_chunk;
 		int vertex_offset;
@@ -50,10 +53,8 @@ private:
 		VmaVirtualAllocation vertex_alloc;
 		VmaVirtualAllocation index_alloc;
 	};
-	size_t max_loading_vertex_count = 0;
 	std::vector<mem_chunk> vertex_chunks;
 	std::vector<mem_chunk> index_chunks;
-	std::vector<const render::mesh *> loadings;
 	std::vector<mesh_handle_t> unloadings;
 	std::vector<mesh_handle_t> freed_ids;
 	std::vector<mesh_desc> mesh_descs;

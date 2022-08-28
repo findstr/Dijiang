@@ -459,7 +459,7 @@ load_mesh(const std::string &file)
 		mesh->triangles.emplace_back(face->mIndices[1]);
 		mesh->triangles.emplace_back(face->mIndices[2]);
 	}
-	mesh->set_dirty();
+	mesh->apply();
 	mesh_ptr.reset(mesh);
 	return mesh_ptr;
 }
@@ -679,7 +679,7 @@ parse_skinrender(skinrender *sr, YAML::Node n)
 	int count = std::strtoul(line.c_str(), nullptr, 0);
 	for (int i = 0; i < count; i++) {
 		int j;
-		render::mesh::bone_weight bone_weight;
+		bone_weight bone_weight;
 		std::getline(input_file, line);
 		char *p = (char *)line.c_str();
 		for (j = 0, p = std::strtok(p, ","); p && j < 4; j++, p = std::strtok(nullptr, ",")) {
