@@ -17,11 +17,13 @@ private:
 public:
 	level(const std::string &path);
 	~level();
+	void clear();
 	void tick(float delta);
 	const std::string &name() const { return name_; }
 	void add_gameobject(gameobject *go, int parent);
 	const std::unordered_map<gameobject::id_t, gameobject *> &all_object() const { return gobjects; };
 public:
+	static void cleanup();
 	static void load(const std::string &path);
 	static void tick_all(float delta);
 	static void cull(camera *cam, std::vector<draw_object> &list, enum render::shader::light_mode light_mode);

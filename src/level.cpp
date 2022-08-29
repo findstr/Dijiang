@@ -13,10 +13,18 @@ level::level(const std::string &name)
 {
 	name_ = name;
 }
+
 level::~level()
+{
+	clear();
+}
+	
+void
+level::clear()
 {
 	for (auto &iter :  gobjects)
 		delete iter.second;
+	gobjects.clear();
 }
 
 void
@@ -132,6 +140,13 @@ level::tick_all(float delta)
 {
 	for (auto &lv:levels)
 		lv->tick(delta);
+}
+	
+void
+level::cleanup()
+{
+	for (auto &lv:levels)
+		lv->clear();
 }
 
 }

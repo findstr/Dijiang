@@ -72,9 +72,10 @@ int main(int argc, char *argv[])
 			frame_acc = 0.0f;
 		}
 	}
-	//TODO: rhi::clieanup
+	engine::level::cleanup();
 	editor.cleanup();
 	engine.cleanup();
+	graphics.cleanup();
 	std::cout << "over" << std::endl;
 	return 0;
 }
