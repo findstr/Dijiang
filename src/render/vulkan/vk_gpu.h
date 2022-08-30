@@ -3,7 +3,7 @@
 #include "conf.h"
 #include "math/math.h"
 #include "vk_mesh.h"
-#include "vk_texture_mgr.h"
+#include "vk_texture.h"
 
 
 
@@ -37,11 +37,11 @@ public:
 
 	texture_handle_t upload_texture(render::texture &tex) 
 	{
-		return vk_texture_mgr::inst().upload_texture(tex);
+		return vk_texture::upload_texture(tex);
 	}
 	inline void unload_texture(texture_handle_t handle) 
 	{
-		return vk_texture_mgr::inst().unload_texture(handle);
+		return vk_texture::unload_texture(handle);
 	}
 };
 

@@ -1,13 +1,14 @@
 #pragma once
 #include <memory>
 #include <vulkan/vulkan.h>
-#include "vulkan/vk_object.h"
 #include "vulkan/vk_surface.h"
 #include "vulkan/vk_swapchain.h"
 #include "vulkan/vk_buffer.h"
 #include "vulkan/vk_texture.h"
 #include "utils/delete_queue.h"
 #include "conf.h"
+
+using engine::render_texture;
 
 namespace engine {
 namespace vulkan {

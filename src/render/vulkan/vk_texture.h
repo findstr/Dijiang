@@ -1,6 +1,5 @@
 #pragma once
 #include <optional>
-#include "vk_object.h"
 #include "render/texture.h"
 #include "vk_buffer.h"
 
@@ -8,6 +7,8 @@ namespace engine {
 namespace vulkan {
 
 struct vk_texture {
+	friend std::vector<vk_texture>;
+	friend delete_queue<vk_texture>;
 public:
 	vk_texture() {
 	}
@@ -32,11 +33,16 @@ public:
 	VkImageView view = VK_NULL_HANDLE;
 	VmaAllocation allocation = VK_NULL_HANDLE;
 private:
-	friend delete_queue<vk_texture>;
 	void clear();
+private:
+	static std::vector<vk_texture> texture_pool;
+	static std::vector<texture_handle_t> freeids;	
 public:
-
-
+	static texture_handle_t upload_texture(render::texture &tex);
+	static void unload_texture(texture_handle_t handle);
+	static const vk_texture *get(texture_handle_t handle) {
+		return &texture_pool[handle];
+	}
 };
 
 }}

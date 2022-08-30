@@ -13,7 +13,7 @@ vk_render_texture::create_colorbuffer()
 	assert(format != texture_format::D32 && format != texture_format::D24S8 && format != texture_format::D32S8);
 	for (int i = 0; i < conf::MAX_FRAMES_IN_FLIGHT; i++) {
 		if (enable_msaa) {
-			msaa_buffer[i].create(this, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1, VK_CTX.msaaSamples);
+			msaa_buffer[i] = vk_texture::upload_texture(.create(this, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 1, VK_CTX.msaaSamples);
 			msaa_sampler[i] = vk_sampler_pool::inst().fetch(this);
 		}
 		color_buffer[i].create(this, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
@@ -151,7 +151,6 @@ vk_render_texture::apply()
 		dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;;
 		dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 	}
-
 	VkRenderPassCreateInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = attachment_count;
